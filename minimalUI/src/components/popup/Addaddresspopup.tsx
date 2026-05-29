@@ -91,29 +91,12 @@ const AddAddressPopup = ({ open, onClose, id }: any) => {
 
         fetchAddress();
     }, [id, open]);
-    ;
-    // const handleSubmit = async (e: { preventDefault: () => void; }) => {
-    //     e.preventDefault();
 
-    //     if (!validate()) return;
-
-    //     try {
-
-    //         await axios.post("http://localhost:3003/add-address", form, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, }, });
-
-    //         setForm({ address1: "", address2: "", city: "", stateName: "", stateCode: "", country: "", countrycode: "", countryNumber: "", zip: "", });
-
-    //         onClose(false)
-
-    //     } catch (err) {
-    //         console.error(err);
-    //     }
-    // };
     const handleSubmit = async (e: any) => {
         e.preventDefault();
 
         if (!validate()) return;
-
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
         try {
             setLoading(true);
 
@@ -124,14 +107,13 @@ const AddAddressPopup = ({ open, onClose, id }: any) => {
                     },
                 });
             } else {
-                await axios.post("http://localhost:3003/add-address", form, {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                });
+                await axios.post("http://localhost:3003/address",{...form,userId: user._id,},{
+                        headers: {Authorization: `Bearer ${localStorage.getItem("token")}`,},
+                    }
+                );
             }
 
-            onClose(true); // 🔥 pass success
+            onClose(true);
 
         } catch (err) {
             console.error(err);

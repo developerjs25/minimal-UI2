@@ -35,55 +35,41 @@ const List: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const theme = useTheme();
 
-  // useEffect(() => {
-  //   const fetchUsers = async () => {
-  //     try {
-  //       const res = await axios.get("http://localhost:3003/data", {headers: {Authorization: `Bearer ${localStorage.getItem("token")}`}});
-  //       setUsers(res.data);
-  //     } catch (err) {
-  //       console.error("Error fetching users:", err);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-  //   fetchUsers();
-  // }, []);
-  
   useEffect(() => {
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
 
-      const res = await axios.get("http://localhost:3003/data", {
-        params: {
-          page: page + 1, 
-          limit: rowsPerPage,
-          search: search,
-          status: value === "1" ? "" : statusMap[value],
-          sortField,
-          sortOrder,
-        },
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+        const res = await axios.get("http://localhost:3003/data", {
+          params: {
+            page: page + 1,
+            limit: rowsPerPage,
+            search: search,
+            status: value === "1" ? "" : statusMap[value],
+            sortField,
+            sortOrder,
+          },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
 
-      setUsers(res.data.data);
-      setTotalCount(res.data.total);
+        setUsers(res.data.data);
+        setTotalCount(res.data.total);
 
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  fetchUsers();
-}, [page, rowsPerPage, search, value, sortField, sortOrder]);
+    fetchUsers();
+  }, [page, rowsPerPage, search, value, sortField, sortOrder]);
 
-useEffect(() => {
-  setPage(0);
-}, [search, value, rowsPerPage]);
+  useEffect(() => {
+    setPage(0);
+  }, [search, value, rowsPerPage]);
 
   const handleDelete = async (id: string) => {
     if (!id) return;
@@ -327,47 +313,51 @@ useEffect(() => {
                     <TableBody>
                       <TableRow>
                         <TableCell colSpan={7} align="center">
-                          <Box component="img" src={Images.NoUserImage} alt="User not found"/>
+                          <Box component="img" src={Images.NoUserImage} alt="User not found" />
                           <Typography sx={{ pb: 4, color: "#637381" }}>User not found</Typography>
                         </TableCell>
                       </TableRow>
                     </TableBody>
                   ) : (
                     <TableBody>
-                      {users.map((users) => {
-                        const isItemSelected = isSelected(users._id);
+                      {users.map((user) => {
+                       const addr = user.defaultAddress;
+
+                        const isItemSelected = isSelected(user._id);
                         return (
-                          <TableRow key={users._id} selected={isItemSelected} hover
+                          <TableRow key={user._id} selected={isItemSelected} hover
                             sx={{
                               cursor: "pointer", "&:hover": { backgroundColor: isItemSelected ? "rgba(0, 167, 111, 0.2)" : "rgba(0, 167, 111, 0.08)", },
                               "&.Mui-selected": { backgroundColor: "rgba(105, 240, 195, 0.16)", "&:hover": { backgroundColor: "rgba(0, 167, 111, 0.2)", }, },
                             }}>
                             <TableCell padding="checkbox">
-                              <Checkbox checked={isItemSelected} onChange={() => handleSelectRow(users._id)}
+                              <Checkbox checked={isItemSelected} onChange={() => handleSelectRow(user._id)}
                                 sx={{ color: "#637381", "&.Mui-checked": { color: "green.main" }, "& .MuiSvgIcon-root": { borderRadius: "50%", width: 20, height: 20, }, }}
                               />
                             </TableCell>
                             <TableCell>
                               <Box display="flex" alignItems="center" gap={1}>
-                                <Avatar src={users.image} alt={users.firstName} sx={{ width: 40, height: 40, borderRadius: "50%" }} />
+                                <Avatar src={user.image} alt={user.firstName} sx={{ width: 40, height: 40, borderRadius: "50%" }} />
                                 <Stack>
-                                  <Typography fontSize={14}>{users.firstName} {users.lastName}</Typography>
-                                  <Typography fontSize={13} color="neutral.main">{users.email}</Typography>
+                                  <Typography fontSize={14}>{user.firstName} {user.lastName}</Typography>
+                                  <Typography fontSize={13} color="neutral.main">{user.email}</Typography>
                                 </Stack>
                               </Box>
                             </TableCell>
-                            <TableCell>{users.countryNumber} {users.phone}</TableCell>
-                            <TableCell>{users.country}</TableCell>
-                            <TableCell> <StyledChip label={users.role} bgcolor={getUserRoleStyle(users.role).backgroundColor}
-                              color={getUserRoleStyle(users.role).color} /></TableCell>
+                            <TableCell>{addr?.countryNumber || ""} {user.phone}</TableCell>
                             <TableCell>
-                              <StyledChip label={users.status} bgcolor={getUserStatusStyle(users.status).backgroundColor}
-                                color={getUserStatusStyle(users.status).color} />
+                            {addr?.country || "-"}
+                            </TableCell>
+                            <TableCell> <StyledChip label={user.role} bgcolor={getUserRoleStyle(user.role).backgroundColor}
+                              color={getUserRoleStyle(user.role).color} /></TableCell>
+                            <TableCell>
+                              <StyledChip label={user.status} bgcolor={getUserStatusStyle(user.status).backgroundColor}
+                                color={getUserStatusStyle(user.status).color} />
                             </TableCell>
                             <TableCell align="right">
-                              <ActionMenu firstlink="View" secoundlink="Edit" thirdlink="Delete" onView={() => navigate(`/app/user/view/${users._id}`)}
-                                onEdit={() => navigate(`/app/user/edit/${users._id}`)}
-                                onDelete={() => { setSelectedUserId(users._id); setOpenDeletePopup(true); }}
+                              <ActionMenu firstlink="View" secoundlink="Edit" thirdlink="Delete" onView={() => navigate(`/app/user/view/${user._id}`)}
+                                onEdit={() => navigate(`/app/user/edit/${user._id}`)}
+                                onDelete={() => { setSelectedUserId(user._id); setOpenDeletePopup(true); }}
                               />
                               <DeletePopup open={openDeletePopup} onClose={() => setOpenDeletePopup(false)} onConfirm={() => {
                                 if (selectedUserId !== null) {

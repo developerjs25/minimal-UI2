@@ -1,11 +1,8 @@
-
-
 import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { COLORS } from "../constants/colors";
 import { FONTS } from "../constants/fonts";
 import type { ColorContextType } from "../Types";
-
 
 
 const ColorContext = createContext<ColorContextType | undefined>(undefined);
@@ -64,6 +61,7 @@ export const AppThemeProvider = ({ children }: { children: React.ReactNode }) =>
           Inputborder: mode === "light" ? "#212B36" : " #999fa5",
           Menubg: mode === "light" ? "#ffff" : " #04111f",
           userchipcolor: mode === "light" ? "#006C9C" : " #61F3F3",
+          addressborder: mode === "light" ? "#d8dbdb" : "rgba(255,255,255,0.1)",
         },
         text: {
           primary: mode === "light" ? "#141A21" : "#ffffff",

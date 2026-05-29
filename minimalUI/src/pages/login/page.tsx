@@ -60,7 +60,7 @@ const LoginPage: React.FC = () => {
                 if (role === "Admin") {
                     navigate("/app/user/list");
                 } else {
-                    navigate(`/user/my-account/${user._id}`);
+                    navigate("/user/product");
                 }
             }, 1500);
         } catch (err: any) {

@@ -6,10 +6,17 @@ import { countries } from "../contact/Inputcontant";
 import { useMemo } from "react";
 
 
-export const UserInputField: React.FC<UserInputFieldProps> = ({ PlaceHolder, row, value, onChange, error = false, helperText = "", disabled = false }) => {
+export const UserInputField: React.FC<UserInputFieldProps> = ({ PlaceHolder, row, value, onChange, error = false, helperText = "", disabled = false, startContant }) => {
   const theme = useTheme();
   return (
     <TextField label={PlaceHolder} multiline rows={row} variant="outlined" fullWidth value={value} onChange={onChange} error={error} 
+     InputProps={{
+      startAdornment: (
+        <InputAdornment position="start" >
+         {startContant}
+        </InputAdornment>
+      ),
+    }}
     helperText={error ? helperText : ""} disabled={disabled}
       sx={{
         "& .MuiOutlinedInput-root": {

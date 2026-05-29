@@ -1,7 +1,7 @@
 import * as React from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
-import { Box, Chip, Menu, MenuItem, Stack, Typography } from "@mui/material";
+import { Box, Checkbox, Chip, ListItemText, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import type { OptionType } from '../../Types';
 import { options } from '../ui/Contant';
 import { useTheme } from "@mui/material/styles";
@@ -66,7 +66,7 @@ export const HeaderSelecter = () => {
 }
 
 
-export function StatusSelecter({ onChange, value, error, helperText = "" }: any) {
+export function Selecter({ onChange, value, error, label, FirstItem, SecondItem, ThridItem }: any) {
     const [status, setStatus] = React.useState('');
     const theme = useTheme();
 
@@ -78,21 +78,21 @@ export function StatusSelecter({ onChange, value, error, helperText = "" }: any)
     return (
         <Box sx={{ minWidth: "100%" }}>
             <FormControl fullWidth variant="outlined" error={error}>
-                <InputLabel id="demo-simple-select-label" sx={{ color: error ? "#FF5630" : "#999fa5", "&.Mui-focused": { color: error ? "#FF5630" : "#999fa5", }, }}>Status</InputLabel>
-                <Select labelId="demo-simple-select-label" id="demo-simple-select" value={value || status} label="Status" onChange={handleChangeStatus}
-                    sx={{ backgroundColor: theme.palette.background.default, borderRadius: 2, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: error ? "#FF5630" : theme.palette.background.whiteBlack, }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: error ? "#FF5630" : theme.palette.background.Inputborder, borderWidth: "1px", }, }}
+                <InputLabel id="demo-simple-select-label" sx={{ color: error ? "#FF5630" : "#999fa5", "&.Mui-focused": { color: error ? "#FF5630" : "#999fa5", }, }}>{label}</InputLabel>
+                <Select labelId="demo-simple-select-label" id="demo-simple-select" value={value || status} label={label} onChange={handleChangeStatus}
+                    sx={{ borderRadius: 2, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: error ? "#FF5630" : theme.palette.background.whiteBlack, }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: error ? "#FF5630" : theme.palette.background.Inputborder, borderWidth: "1px", }, }}
                     MenuProps={{ PaperProps: { sx: { backgroundColor: theme.palette.background.default, borderRadius: 3, mt: 1, boxShadow: "0px 4px 20px rgba(0,0,0,0.1)", } } }}
                 >
-                    <MenuItem value="Active" sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>Active</MenuItem>
-                    <MenuItem value="Inactive" sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>Inactive</MenuItem>
-                    <MenuItem value="Banned" sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>Banned</MenuItem>
+                    <MenuItem value={FirstItem} sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>{FirstItem}</MenuItem>
+                    <MenuItem value={SecondItem} sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>{SecondItem}</MenuItem>
+                    <MenuItem value={ThridItem} sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>{ThridItem}</MenuItem>
                 </Select>
             </FormControl>
         </Box>
     );
 }
 
-export function RoleSelecter({ onChange, value, error, helperText = "" }: any) {
+export function RoleSelecter({ onChange, value, error, label, FirstItem, SecondItem }: any) {
     const [role, setRole] = React.useState('');
     const theme = useTheme();
 
@@ -105,16 +105,109 @@ export function RoleSelecter({ onChange, value, error, helperText = "" }: any) {
         <Box sx={{ minWidth: "100%" }}>
             <FormControl fullWidth variant="outlined" error={error}>
                 <InputLabel id="demo-simple-select-label" sx={{ color: error ? "#FF5630" : "#999fa5", "&.Mui-focused": { color: error ? "#FF5630" : "#999fa5", }, }}>
-                    Role</InputLabel>
-                <Select labelId="demo-simple-select-label" id="demo-simple-select" value={value || role} label="Role" onChange={handleChangeRole}
-                    sx={{ backgroundColor: theme.palette.background.default, borderRadius: 2, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: error ? "#FF5630" : theme.palette.background.whiteBlack, }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: error ? "#FF5630" : theme.palette.background.Inputborder, borderWidth: "1px", }, }}
+                    {label}</InputLabel>
+                <Select labelId="demo-simple-select-label" id="demo-simple-select" value={value || role} label={label} onChange={handleChangeRole}
+                    sx={{ borderRadius: 2, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: error ? "#FF5630" : theme.palette.background.whiteBlack, }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: error ? "#FF5630" : theme.palette.background.Inputborder, borderWidth: "1px", }, }}
                     MenuProps={{ PaperProps: { sx: { backgroundColor: theme.palette.background.default, borderRadius: 3, mt: 1, boxShadow: "0px 4px 20px rgba(0,0,0,0.1)", } } }}
                 >
-                    <MenuItem value="User" sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>User</MenuItem>
-                    <MenuItem value="Admin" sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>Admin</MenuItem>
+                    <MenuItem value={FirstItem} sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>{FirstItem}</MenuItem>
+                    <MenuItem value={SecondItem} sx={{ borderRadius: 2, mx: 1, "&:hover": { backgroundColor: theme.palette.background.buttonHover } }}>{SecondItem}</MenuItem>
                 </Select>
             </FormControl>
         </Box>
     );
 }
 
+type Props = {
+    label?: string;
+    options: string[];
+    value: string[];
+    setSelected: (val: string[]) => void;
+    handleChange: (field: string, value: any) => void;
+    fieldName: string;
+};
+
+export function ProductSelecter({ label, options, value, setSelected, handleChange, fieldName, }: Props) {
+    const theme = useTheme();
+
+    const handleChangeSelect = (event: SelectChangeEvent<string[]>) => {
+        const val = event.target.value;
+
+        const updated =
+            typeof val === "string" ? val.split(",") : val;
+
+        setSelected(updated);
+        handleChange(fieldName, updated);
+    };
+
+    return (
+        <Select multiple value={value} onChange={handleChangeSelect} displayEmpty
+            renderValue={(selected) => selected.length > 0 ? (selected.join(", ")) : (<Typography sx={{ color: "#999fa5" }}> Select {label}</Typography>)}
+            sx={{
+                width: "100%", borderRadius: 2, height: 56,
+                "& .MuiOutlinedInput-notchedOutline": { borderColor: theme.palette.background.Inputborder, },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: theme.palette.background.Inputborder, },
+            }}
+            MenuProps={{
+                PaperProps: {
+                    sx: {
+                        mt: 1, borderRadius: 2, boxShadow: "0 6px 20px rgba(0,0,0,0.12)", backgroundColor: theme.palette.background.ViewPaperColor,
+                        "& .MuiMenuItem-root": { fontSize: 14, borderRadius: 1, margin: "4px 8px", },
+                    },
+                },
+            }}
+        >
+            {options.map((item) => (
+                <MenuItem key={item} value={item}>
+                    <ListItemText primary={item} />
+                </MenuItem>
+            ))}
+        </Select>
+    );
+}
+
+type UserProps = {
+    label?: string;
+    options: string[];
+    value: string;
+    setSelected: (val: string) => void;
+    handleChange: (field: string, value: any) => void;
+    fieldName: string;
+};
+
+export function UserSelecter({ options, value, setSelected, handleChange, fieldName, }: UserProps) {
+    const theme = useTheme();
+
+    return (
+        <Select value={value} onChange={(e) => {
+            const val = e.target.value;
+
+            const cleanValue = Array.isArray(val) ? val[0] : val;
+
+            setSelected(cleanValue);
+            handleChange(fieldName, cleanValue);
+        }} size="small" displayEmpty
+            sx={{
+                width: 110, height: 40, borderRadius: 2, backgroundColor: theme.palette.background.default,
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: theme.palette.background.Inputborder, borderWidth: "1px", },
+            }}
+            MenuProps={{
+                PaperProps: {
+                    sx: {
+                        mt: 1, borderRadius: 2, boxShadow: "0 6px 20px rgba(0,0,0,0.12)", backgroundColor: theme.palette.background.ViewPaperColor,
+                        "& .MuiMenuItem-root": {
+                            fontSize: 14, borderRadius: 1, margin: "4px 8px",
+                            "&.Mui-selected": { backgroundColor: theme.palette.background.buttonHover, },
+                        },
+                    },
+                },
+            }}
+        >
+            {options.map((item) => (
+                <MenuItem key={item} value={item}>
+                    {item}
+                </MenuItem>
+            ))}
+        </Select>
+    );
+}

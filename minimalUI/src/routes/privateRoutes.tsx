@@ -1,4 +1,5 @@
-import { Navigate } from "react-router-dom";
+import { Navigate} from "react-router-dom";
+
 
 export const PrivateLoginRoute = ({ children }: any) => {
   const token = localStorage.getItem("token");
@@ -30,7 +31,9 @@ export const RoleRoute = ({ children, allowedRoles }: any) => {
     return <Navigate to="/login" replace />;
   }
 
-  const normalizedRoles = allowedRoles.map((r: string) => r.toLowerCase());
+  const normalizedRoles = allowedRoles.map((r: string) =>
+    r.toLowerCase()
+  );
 
   if (!role || !normalizedRoles.includes(role)) {
     return <Navigate to={`/user/my-account/${userId}`} replace />;

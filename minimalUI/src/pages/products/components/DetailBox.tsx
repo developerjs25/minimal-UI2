@@ -1,210 +1,314 @@
-import { Box, Typography, Accordion, AccordionSummary, AccordionDetails, Paper, Button, IconButton, Stack } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import Image from "../../../constants/Images";
-import React, { useState } from "react";
-import CloseIcon from "@mui/icons-material/Close";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { useDropzone } from "react-dropzone";
-import { ListButton } from "../../../components/button/CustomButton";
+import { Box, Typography, Accordion, AccordionSummary, AccordionDetails, Grid, Stack, } from "@mui/material";
 import { UserInputField } from "../../../components/input/CustomInput";
-import type { ProductFormProps } from "../../../Types";
+import { ListButton } from "../../../components/button/CustomButton";
+import { ProductSelecter, RoleSelecter, Selecter } from "../../../components/select";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { useNavigate, useParams } from "react-router-dom";
+import Breadcrumb from "../../../components/breadcrumbs";
+import Toaster from "../../../components/toaster";
 import { useTheme } from "@mui/material/styles";
+import { useEffect, useState } from "react";
+import ProductImage from "./ProductImage";
+import axios from "axios";
 
-const ProductDetails: React.FC<ProductFormProps> = ({ ProductName, Productdescription, ProductContent }) => {
-    const [files, setFiles] = useState<File[]>([]);
+const sizesNumber = ["8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12", "12.5", "13"];
+const colorsList = ["Red", "Blue", "Pink", "Green", "Yellow", "Orange", "Black", "White"];
+
+
+const ProductDetails = () => {
+    const [toast, setToast] = useState({ open: false, message: "", type: "", });
+    const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
+    const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
+    const { id } = useParams();
     const theme = useTheme();
+    const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+    const [selectedColors, setSelectedColors] = useState<string[]>([]);
+    const [productData, setProductData] = useState({
+        imageName: "",
+        imageFile: null as File | null, 
+        productName: "",
+        Productdescription: "",
+        publish: "",
+        productcode: "",
+        quantity: "",
+        colors: "",
+        category: "",
+        sizes: "",
+        regularprice: "",
+        saleprice: "",
+        gender: "",
+        tax: "",
+    });
 
+    const handleChange = (field: string, value: any) => {
 
-    const onDrop = (acceptedFiles: File[]) => {
-        setFiles((prev) => [...prev, ...acceptedFiles]);
+        setProductData((prev) => ({ ...prev, [field]: value }));
+        setErrors((prev) => ({ ...prev, [field]: false }));
+
+    };
+    const handleImageChange = (file: File) => {
+        setProductData((prev) => ({
+            ...prev,
+            imageFile: file,
+            imageName: file.name,
+        }));
+    };
+    useEffect(() => {
+        const FetchProduct = async () => {
+            try {
+                setIsLoading(true);
+                const res = await axios.get(`http://localhost:3003/product/${id}`, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                });
+
+                setProductData({
+                    imageName: res.data.imageName || "",
+                    imageFile: null,
+                    productName: res.data.productName || "",
+                    Productdescription: res.data.Productdescription || "",
+                    publish: res.data.publish || "",
+                    productcode: res.data.productcode || "",
+                    quantity: res.data.quantity || "",
+                    colors: res.data.colors || "",
+                    category: res.data.category || "",
+                    sizes: res.data.sizes || "",
+                    regularprice: res.data.regularprice || "",
+                    saleprice: res.data.saleprice || "",
+                    gender: res.data.gender || "",
+                    tax: res.data.tax || "",
+                });
+                setSelectedSizes(
+                    res.data.sizes ? res.data.sizes.split(",") : []
+                );
+                setSelectedColors(
+                    res.data.colors ? res.data.colors.split(",") : []
+                );
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        FetchProduct();
+    }, [id])
+
+    const validate = () => {
+        const newErrors: any = {};
+
+        if (!productData.productName) newErrors.productName = true;
+        if (!productData.productcode) newErrors.productcode = true;
+        if (!productData.Productdescription) newErrors.Productdescription = true;
+        if (!productData.publish) newErrors.publish = true;
+        if (!productData.quantity) newErrors.quantity = true;
+        if (!productData.colors) newErrors.colors = true;
+        if (!productData.category) newErrors.category = true;
+        if (!productData.saleprice) newErrors.saleprice = true;
+        if (!productData.tax) newErrors.tax = true;
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
-    const { getRootProps, getInputProps } = useDropzone({ onDrop });
+    const handleSubmit = async () => {
+        if (!validate()) return;
+        setIsLoading(true);
 
-    const removeImage = (index: number) => {
-        setFiles(files.filter((_, i) => i !== index));
-    };
+        try {
+            const formData = new FormData();
 
-    const removeAll = () => {
-        setFiles([]);
+
+            if (productData.imageFile) {
+                formData.append("image", productData.imageFile);
+            }
+
+            formData.append("productName", productData.productName);
+            formData.append("Productdescription", productData.Productdescription);
+            formData.append("productcode", productData.productcode);
+            formData.append("quantity", productData.quantity);
+            formData.append("category", productData.category);
+            formData.append("gender", productData.gender);
+            formData.append("tax", productData.tax);
+            formData.append("publish", productData.publish);
+            formData.append("regularprice", productData.regularprice);
+            formData.append("saleprice", productData.saleprice);
+            formData.append("sizes", selectedSizes.join(","));
+            formData.append("colors", selectedColors.join(","));
+
+            if (id) {
+                await axios.put(`http://localhost:3003/product/${id}`, formData, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                });
+            } else {
+                await axios.post("http://localhost:3003/product", formData, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                });
+            }
+
+            setToast({ open: true, message: id ? "Product update successfully!" : "Product created successfully!", type: "success", });
+
+            setTimeout(() => {
+                navigate("/app/products/list");
+            }, 1500);
+
+            setProductData({
+                imageName: "",
+                imageFile: null,
+                productName: "",
+                Productdescription: "",
+                publish: "",
+                productcode: "",
+                quantity: "",
+                colors: "",
+                category: "",
+                sizes: "",
+                regularprice: "",
+                saleprice: "",
+                gender: "",
+                tax: "",
+            });
+
+        } catch (err) {
+            console.error(err);
+            setToast({ open: true, message: "Failed to create product", type: "error", });
+        } finally {
+            setIsLoading(false);
+        }
     };
+    console.log(productData.imageName, "this is image name");
 
     return (
-        <Box p={3}>
-            <Accordion defaultExpanded sx={{ borderRadius: "14px !important", boxShadow: "0 5px 14px rgba(133, 131, 131, 0.12)", backgroundColor: theme.palette.background.listColor, }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 3 }}>
-                    <Box>
-                        <Typography fontWeight={600} fontSize={18}>Details</Typography>
-                        <Typography variant="body2" color="text.secondary" paddingTop={1}>Title, short description, image...</Typography>
-                    </Box>
-                </AccordionSummary>
-                <AccordionDetails sx={{ borderTop: "1px solid #919eab33", }}>
-                    <Stack spacing={3} my={3}>
-                        <UserInputField PlaceHolder="Product name" value={ProductName} />
-                        <UserInputField PlaceHolder="Sub description" value={Productdescription} row={4} />
-                    </Stack>
-
-                    <Typography fontWeight={500} mb={1}>Content</Typography>
-
-                    <Paper sx={{ borderRadius: 2, backgroundColor: "#919eab14", }}>
-                        <UserInputField PlaceHolder=" Write something awesome..." value={ProductContent} row={6} />
-                    </Paper>
-                    <Box mt={4}>
-                        <Typography fontWeight={600} mb={1} fontSize={14}>Images</Typography>
-                        <Paper variant="outlined" {...getRootProps()} sx={{
-                            height: 250, display: "flex", flexDirection: "column", alignItems: "center",
-                            justifyContent: "center", border: files.length === 0 ? "1px dashed #919eab33" : files.length < 2 ? "1px dashed #ff5630" : "1px dashed #919eab33", backgroundColor: files.length < 2 && files.length > 0 ? "#ff563014" : "#919eab14", borderRadius: 2,
-                        }} >
-                            <input {...getInputProps()} />
-                            <Box component="img" src={Image.imageinput} alt="inputimage" sx={{ width: 200 }} />
-                            <Typography fontWeight={600} fontSize={18}
-                                color={files.length < 2 && files.length > 0 ? "#ff5630" : "text.primary"}>Drop or select files</Typography>
-                            <Typography fontSize={13} color="#637381">Drag files here, or <span style={{ color: "#00a76f", }}>browse</span> your device.</Typography>
-                        </Paper>
-                        {files.length > 0 && files.length < 2 && (
-                            <Typography color="#ff5630" mt={1} fontSize={13}>Must have at least 2 items!</Typography>
-                        )}
-                        <Box mt={3} display="flex" gap={2} flexWrap="wrap">
-                            {files.map((file, index) => (
-                                <Box key={index} sx={{ width: 80, height: 80, position: "relative", borderRadius: 2, overflow: "hidden", }} >
-                                    <img src={URL.createObjectURL(file)} style={{ width: "100%", height: "100%", objectFit: "cover", }} />
-                                    <IconButton size="small" onClick={() => removeImage(index)} sx={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.5)", color: "#fff", }}><CloseIcon sx={{ fontSize: 16 }} /></IconButton>
-                                </Box>
-                            ))}
+        <Box>
+            <Box sx={{ pt: 3 }}>
+                <Breadcrumb link1="/app/products/list" linkName1="Product" link2={id ? `/app/products/edit/${id}` : "/app/products/create"} linkName2={id ? "Edit" : "List"} link3="/app/products/list" linkName3={id ? productData.productName : "Create"} />
+            </Box>
+            <Box p={{ xs: 2, md: 3 }} sx={{ backgroundColor: theme.palette.background.default, borderRadius: 3, }}>
+                {/* DETAILS */}
+                <Accordion defaultExpanded disableGutters sx={{
+                    mb: 3, borderRadius: "18px !important", overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+                    backgroundColor: theme.palette.background.default, "&:before": { display: "none" },
+                }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: { xs: 2, md: 3 }, py: 1, }}>
+                        <Box>
+                            <Typography fontWeight={700} fontSize={18}> Details</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}> Title, description and product image</Typography>
                         </Box>
-                        {files.length > 0 && (
-                            <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
-                                <Button variant="contained" onClick={removeAll} sx={{ height: 35, mt: 2, textTransform: "none", borderRadius: 2, fontWeight: 600, bgcolor: "white.main", color: "black.main", boxShadow: "none", border: "1px solid #919eab52", "&:hover": { boxShadow: "none", border: "2px solid black" } }}>Remove All</Button>
-                                <ListButton contant="Upload" icon={<CloudUploadIcon />} />
-                            </Box>
-                        )}
-                    </Box>
-                </AccordionDetails>
-            </Accordion>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ borderTop: "1px solid #919eab22", p: { xs: 2, md: 3 }, }}>
+                        <Grid container spacing={4} alignItems="stretch">
+                            {/* IMAGE */}
+                            <Grid size={{ xs: 12, md: 5 }}>
+                                <ProductImage
+                                    error={errors.image}
+                                    image={productData.imageName}
+                                    onChange={handleImageChange}
+                                />
+                            </Grid>
+                            {/* INFO */}
+                            <Grid size={{ xs: 12, md: 7 }}>
+                                <Stack spacing={3}>
+                                    <Typography fontWeight={700} fontSize={15}>Product Information</Typography>
+                                    <UserInputField PlaceHolder="Product name" value={productData.productName} onChange={(e) => handleChange("productName", e.target.value)}
+                                        error={errors.productName} />
+                                    <UserInputField PlaceHolder="Description" value={productData.Productdescription} onChange={(e) => handleChange("Productdescription", e.target.value)} row={5} error={errors.Productdescription} />
+                                </Stack>
+                            </Grid>
+                        </Grid>
+                    </AccordionDetails>
+                </Accordion>
+
+                {/* PROPERTIES */}
+                <Accordion defaultExpanded disableGutters sx={{
+                    mb: 3, borderRadius: "18px !important", overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+                    backgroundColor: theme.palette.background.default, "&:before": { display: "none" },
+                }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: { xs: 2, md: 3 }, py: 1, }}>
+                        <Box>
+                            <Typography fontWeight={700} fontSize={18}>Properties</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }} > Product specifications and attributes... </Typography>
+                        </Box>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ borderTop: "1px solid #919eab22", p: { xs: 2, md: 3 }, }}>
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <UserInputField PlaceHolder="Product code" value={productData.productcode} onChange={(e) => handleChange("productcode", e.target.value)}
+                                    error={errors.productcode} />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <UserInputField PlaceHolder="Quantity" value={productData.quantity} onChange={(e) => handleChange("quantity", e.target.value)} error={errors.quantity} />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <ProductSelecter label="Colors" options={colorsList} value={selectedColors} setSelected={setSelectedColors} handleChange={handleChange} fieldName="colors" />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <ProductSelecter label="Sizes" options={sizesNumber} value={selectedSizes} setSelected={setSelectedSizes} handleChange={handleChange}
+                                    fieldName="sizes" />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <Typography fontWeight={600} mb={1} fontSize={14}>Gender</Typography>
+                                <Selecter value={productData.gender} onChange={(value: string) => handleChange("gender", value)} error={errors.gender} label="Select Gender" FirstItem="Male" SecondItem="Female" ThridItem="Kids" />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <Typography fontWeight={600} mb={1} fontSize={14}>Category</Typography>
+                                <UserInputField PlaceHolder="Category" value={productData.category} onChange={(e) => handleChange("category", e.target.value)}
+                                    error={errors.category} />
+                            </Grid>
+                        </Grid>
+                    </AccordionDetails>
+                </Accordion>
+
+                {/* PRICING */}
+                <Accordion defaultExpanded disableGutters sx={{
+                    mb: 3, borderRadius: "18px !important", overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+                    backgroundColor: theme.palette.background.default, "&:before": { display: "none" },
+                }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: { xs: 2, md: 3 }, py: 1, }}>
+                        <Box>
+                            <Typography fontWeight={700} fontSize={18}>Pricing</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>Product pricing details</Typography>
+                        </Box>
+                    </AccordionSummary>
+
+                    <AccordionDetails sx={{ borderTop: "1px solid #919eab22", p: { xs: 2, md: 3 }, }} >
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <UserInputField PlaceHolder="Regular price" startContant="$" value={productData.regularprice} onChange={(e) => handleChange("regularprice", e.target.value)}
+                                    error={errors.regularprice} />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <UserInputField PlaceHolder="Sale price" startContant="$" value={productData.saleprice} onChange={(e) => handleChange("saleprice", e.target.value)}
+                                    error={errors.saleprice} />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <UserInputField PlaceHolder="Tax (%)" startContant="%" value={productData.tax} onChange={(e) => handleChange("tax", e.target.value)}
+                                    error={errors.tax} />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <RoleSelecter value={productData.publish} onChange={(value: string) => handleChange("publish", value)} error={errors.publish} label="Publish or Draft"
+                                    FirstItem="Publish" SecondItem="Draft" />
+                            </Grid>
+                        </Grid>
+                    </AccordionDetails>
+                </Accordion>
+
+                {/* BUTTON */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4, }} >
+                    <ListButton contant={id ? "Update Product" : "Create Product"} click={handleSubmit} loading={isLoading} />
+                </Box>
+                <Toaster openToast={toast.open} setOpenToast={(open: boolean) => setToast({ ...toast, open })} contant={toast.message} color={toast.type} />
+            </Box>
         </Box>
     );
 };
 
 export default ProductDetails;
 
-
-// import React, { useState } from "react";
-// import { Box, Typography, Paper, Button, IconButton } from "@mui/material";
-// import CloseIcon from "@mui/icons-material/Close";
-// import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-// import { useDropzone } from "react-dropzone";
-
-// export default function ImageUpload() {
-//   const [files, setFiles] = useState<File[]>([]);
-
-//   const onDrop = (acceptedFiles: File[]) => {
-//     setFiles((prev) => [...prev, ...acceptedFiles]);
-//   };
-
-//   const { getRootProps, getInputProps } = useDropzone({ onDrop });
-
-//   const removeImage = (index: number) => {
-//     setFiles(files.filter((_, i) => i !== index));
-//   };
-
-//   const removeAll = () => {
-//     setFiles([]);
-//   };
-
-//   return (
-//     <Box>
-
-//       <Typography fontWeight={600} mb={2}>
-//         Images
-//       </Typography>
-
-//       {/* Drag Drop Area */}
-//       <Paper
-//   {...getRootProps()}
-//   sx={{
-//     border: files.length < 2 ? "2px dashed #ff5630" : "2px dashed #dfe3e8",
-//     backgroundColor: files.length < 2 ? "#fff4f2" : "#f9fafb",
-//     borderRadius: 2,
-//     textAlign: "center",
-//     py: 6,
-//     cursor: "pointer",
-//     transition: "all 0.2s ease",
-//   }}
-// >
-//   <input {...getInputProps()} />
-
-//   <Typography
-//     variant="h6"
-//     color={files.length < 2 ? "#ff5630" : "text.primary"}
-//   >
-//     Drop or select files
-//   </Typography>
-
-//   <Typography color="text.secondary">
-//     Drag files here, or <span style={{ color: "#00a76f" }}>browse</span> your device.
-//   </Typography>
-// </Paper>
-
-//       {/* Validation Text */}
-//       {files.length < 2 && (
-//         <Typography color="#ff5630" mt={1} fontSize={13}>
-//           Must have at least 2 items!
-//         </Typography>
-//       )}
-
-//       {/* Preview Images */}
-//       <Box mt={3} display="flex" gap={2} flexWrap="wrap">
-//         {files.map((file, index) => (
-//           <Box
-//             key={index}
-//             sx={{
-//               width: 80,
-//               height: 80,
-//               position: "relative",
-//               borderRadius: 2,
-//               overflow: "hidden",
-//             }}
-//           >
-//             <img
-//               src={URL.createObjectURL(file)}
-//               style={{
-//                 width: "100%",
-//                 height: "100%",
-//                 objectFit: "cover",
-//               }}
-//             />
-
-//             <IconButton
-//               size="small"
-//               onClick={() => removeImage(index)}
-//               sx={{
-//                 position: "absolute",
-//                 top: 4,
-//                 right: 4,
-//                 background: "rgba(0,0,0,0.5)",
-//                 color: "#fff",
-//               }}
-//             >
-//               <CloseIcon sx={{ fontSize: 16 }} />
-//             </IconButton>
-//           </Box>
-//         ))}
-//       </Box>
-
-//       {/* Buttons */}
-//       <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
-//         <Button variant="outlined" onClick={removeAll}>
-//           Remove All
-//         </Button>
-
-//         <Button
-//           variant="contained"
-//           startIcon={<CloudUploadIcon />}
-//         >
-//           Upload
-//         </Button>
-//       </Box>
-
-//     </Box>
-//   );
-// }

@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Box, Grid, Stack, Typography, IconButton } from "@mui/material";
-import { MapPin, Trash2 } from "lucide-react";
+import { Box, Grid, Stack, Typography, useTheme } from "@mui/material";
+import { MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import ActionMenu from "../../../../components/ActionMenu";
 import DeletePopup from "../../../../components/popup/Deletepopup";
-import { useNavigate } from "react-router-dom";
 import AddAddressPopup from "../../../../components/popup/Addaddresspopup";
 
 interface Address {
@@ -22,9 +21,26 @@ const AddressList = () => {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [openDeletePopup, setOpenDeletePopup] = useState(false);
     const [openAddressPopup, setOpenAddressPopup] = useState(false);
+    const [defaultAddressId, setDefaultAddressId] = useState<string | null>(null);
 
-    const navigate = useNavigate();
+    const theme = useTheme();
 
+    // const fetchAddresses = async () => {
+    //     try {
+    //         const res = await axios.get("http://localhost:3003/addresses", {
+    //             headers: {
+    //                 Authorization: `Bearer ${localStorage.getItem("token")}`,
+    //             },
+    //         });
+    //         setAddresses(res.data);
+    //     } catch (err) {
+    //         console.error(err);
+    //     }
+    // };
+
+    useEffect(() => {
+        fetchAddresses();
+    }, []);
     const fetchAddresses = async () => {
         try {
             const res = await axios.get("http://localhost:3003/addresses", {
@@ -32,29 +48,80 @@ const AddressList = () => {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
             });
-            setAddresses(res.data);
+
+            setAddresses(res.data.addresses);
+            setDefaultAddressId(res.data.defaultAddressId);
+
         } catch (err) {
             console.error(err);
         }
     };
 
-    useEffect(() => {
-        fetchAddresses();
-    }, []);
+    // const deleteAddress = async (id: string) => {
+    //     try {
+    //         await axios.delete(`http://localhost:3003/address/${id}`, {
+    //             headers: {
+    //                 Authorization: `Bearer ${localStorage.getItem("token")}`,
+    //             },
+    //         });
+    //         fetchAddresses();
+    //     } catch (err) {
+    //         console.error(err);
+    //     }
+    // };
+   const deleteAddress = async (addressId: string) => {
+    try {
+        const userId = localStorage.getItem("userId"); 
 
-    const deleteAddress = async (id: string) => {
+        await axios.delete(`http://localhost:3003/address/${addressId}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+        });
+
+        const res = await axios.get(`http://localhost:3003/data/${userId}`);
+        const user = res.data;
+
+        const remainingAddresses = user.addresses?.filter(
+            (a: any) => a._id !== addressId
+        );
+
+        let newDefaultId = user.defaultAddressId;
+
+        if (user.defaultAddressId === addressId) {
+            newDefaultId = remainingAddresses?.[0]?._id || null;
+        }
+
+        await axios.put(`http://localhost:3003/data/${userId}`, {
+            addresses: remainingAddresses,
+            defaultAddressId: newDefaultId,
+        });
+
+        setAddresses(remainingAddresses);
+        setDefaultAddressId(newDefaultId);
+
+    } catch (err) {
+        console.error("Delete address failed:", err);
+    }
+};
+    const makeDefaultAddress = async (id: string) => {
         try {
-            await axios.delete(`http://localhost:3003/address/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-            });
+            await axios.put(
+                `http://localhost:3003/user/default-address/${id}`,
+                {},
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                }
+            );
+
             fetchAddresses();
+
         } catch (err) {
             console.error(err);
         }
     };
-
     return (
         <Box sx={{ p: 2 }}>
 
@@ -73,18 +140,17 @@ const AddressList = () => {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.4, delay: index * 0.1 }}
                         >
-                            <Box
-                                sx={{
-                                    p: 3,
-                                    borderRadius: 3,
-                                    background: "rgba(255,255,255,0.05)",
-                                    border: "1px solid rgba(255,255,255,0.1)",
-                                    transition: "0.3s",
-                                    "&:hover": {
-                                        transform: "translateY(-4px)",
-                                        background: "rgba(255,255,255,0.1)",
-                                    },
-                                }}
+                            <Box sx={{
+                                p: 3, borderRadius: 3,
+                                background: defaultAddressId === addr._id ? "#45b7d120" : "rgba(255,255,255,0.05)",
+                                border: `1px solid ${defaultAddressId === addr._id ? "#45b7d1" : theme.palette.background.addressborder}`,
+
+                                transition: "0.3s",
+                                "&:hover": {
+                                    transform: "translateY(-4px)",
+                                    background: defaultAddressId === addr._id ? "#45b7d130" : "rgba(255,255,255,0.1)",
+                                },
+                            }}
                             >
                                 <Stack direction="row" spacing={3} alignItems="center">
 
@@ -93,39 +159,23 @@ const AddressList = () => {
                                     </Box>
                                     <Box sx={{ flexGrow: 1 }}>
                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
-
-
                                             <Typography fontWeight={600}>
                                                 {addr.country}
                                             </Typography>
-                                            <ActionMenu
-                                                firstlink="View"
+                                            <ActionMenu firstlink={defaultAddressId === addr._id ? "Default Address" : "Make Default"}
                                                 secoundlink="Edit"
                                                 thirdlink="Delete"
-                                                onView={() => navigate(`/app/address/view/${addr._id}`)}
-                                                onEdit={() => {
-                                                    setSelectedId(addr._id);
-                                                    setOpenAddressPopup(true);
-                                                }}
-                                                onDelete={() => {
-                                                    setSelectedId(addr._id);
-                                                    setOpenDeletePopup(true);
-                                                }}
+                                                onView={() => { if (defaultAddressId !== addr._id) { makeDefaultAddress(addr._id); } }}
+                                                onEdit={() => { setSelectedId(addr._id); setOpenAddressPopup(true); }}
+                                                onDelete={() => { setSelectedId(addr._id); setOpenDeletePopup(true); }}
                                             />
-                                            <IconButton size="small" onClick={() => deleteAddress(addr._id)} >
-                                                <Trash2 size={18} />
-                                            </IconButton>
                                         </Stack>
-
                                         <Typography fontSize={14} color="text.secondary">
                                             {addr.city}, {addr.stateName}
                                         </Typography>
                                         <Typography fontSize={14} color="text.secondary">
                                             {addr.address1}, {addr.address2}
                                         </Typography>
-
-
-
                                     </Box>
                                 </Stack>
                             </Box>
@@ -135,22 +185,12 @@ const AddressList = () => {
                 ))}
             </Grid>
 
-            <DeletePopup open={openDeletePopup} onClose={() => setOpenDeletePopup(false)} onConfirm={() => {
-                    if (selectedId) {
-                        deleteAddress(selectedId);
-                    }
-                    setOpenDeletePopup(false);
-                }}
+            <DeletePopup open={openDeletePopup} onClose={() => setOpenDeletePopup(false)}
+                onConfirm={() => { if (selectedId) { deleteAddress(selectedId); } setOpenDeletePopup(false); }}
             />
-            <AddAddressPopup
-                open={openAddressPopup}
-                id={selectedId}
-                onClose={(success: boolean) => {
-                    setOpenAddressPopup(false);
-                    setSelectedId(null);
-
-                    if (success) fetchAddresses(); 
-                }}
+            <AddAddressPopup open={openAddressPopup} id={selectedId}
+                onClose={() => { setOpenAddressPopup(false); setSelectedId(null); }}
+                onConfirm={(success: boolean) => { setOpenAddressPopup(false); setSelectedId(null); if (success) { fetchAddresses(); } }}
             />
         </Box>
     );

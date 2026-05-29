@@ -212,25 +212,31 @@ export const orders: Order[] = [
   
 ];
 
-export const getUserStatusStyle = (status: string) => {
-  switch (status.toLowerCase()) {
+export const getUserStatusStyle = (status?: string) => {
+  switch (status?.toLowerCase()) {
     case "completed":
       return {
         color: "#118D57",
         backgroundColor: "rgba(34, 197, 94, 0.16)",
       };
-    case "Refunded":
+
+    case "refunded":
       return {
-        color: "#0000",
+        color: "#637381",
         backgroundColor: "rgba(145, 158, 171, 0.16)",
       };
+
     case "pending":
       return {
         color: "#C68400",
         backgroundColor: "rgba(255, 171, 0, 0.16)",
       };
+
     default:
-      return {};
+      return {
+        color: "#637381",
+        backgroundColor: "rgba(145, 158, 171, 0.16)",
+      };
   }
 };
 

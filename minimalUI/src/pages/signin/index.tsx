@@ -80,7 +80,7 @@ const SigninPage: React.FC = () => {
             setToast({ open: true, message: "Sign up successfully!", type: "success", });
 
             setTimeout(() => {
-                navigate("/app/user/list");
+                navigate("/user/product");
             }, 1500);
         } catch (err: any) {
             const message = err.response?.data?.message === "User already exists" ? "This email is already registered" : err.response?.data?.message || "Signup failed";

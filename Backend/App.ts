@@ -6,7 +6,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { verifyToken } from "./Middleware";
-
+import path from "path";
+import { upload } from "./upload";
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ const port = process.env.PORT || 3003;
 
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 mongoose
   .connect(process.env.MONGO_URI!)
@@ -26,62 +28,28 @@ mongoose
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
-const addressSchema = new mongoose.Schema({
-  address1: String,
-  address2: String,
-  city: String,
-  stateCode: String,
-  stateName: String,
-  country: String,
-  countrycode: String,
-  countryNumber: String,
-  zip: String,
-  isDefault: { type: Boolean, default: false },
-});
 
-// const userSchema = new mongoose.Schema({
-//   image: String,
-//   firstName: String,
-//   lastName: String,
-//   email: String,
-//   password: {
-//     type: String,
-//   },
-//   phone: String,
-//   countrycode: String,
-//   countryNumber: String,
-//   country: String,
-//   stateCode: {
-//     type: String,
-//     uppercase: true,
-//     trim: true,
-//   },
+const addressSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    address1: String,
+    address2: String,
+    city: String,
+    stateCode: String,
+    stateName: String,
+    country: String,
+    countrycode: String,
+    countryNumber: String,
+    zip: String,
+  },
+);
 
-//   stateName: {
-//     type: String,
-//     trim: true,
-//   },
-//   city: String,
-//   address1: String,
-//   address2: String,
-//   role: {
-//     type: String,
-//     default: "User",
-//   },
-//   status: {
-//     type: String,
-//     default: "Active",
-//   },
-//   resetOtp: {
-//     type: String,
-//     default: null,
-//   },
+const Address = mongoose.model("Address", addressSchema);
 
-//   otpExpiry: {
-//     type: Date,
-//     default: null,
-//   },
-// });
 const userSchema = new mongoose.Schema({
   image: String,
   firstName: String,
@@ -90,21 +58,139 @@ const userSchema = new mongoose.Schema({
   password: String,
   phone: String,
 
-  addresses: [addressSchema], 
+  resetOtp: String,
+  otpExpiry: Date,
 
-  role: {
+  role: { type: String, default: "User" },
+  status: { type: String, default: "Active" },
+
+  defaultAddressId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Address",
+    default: null,
+  },
+});
+const User = mongoose.model("User", userSchema);
+
+const productSchema = new mongoose.Schema({
+  imageName: String,
+  productName: String,
+  Productdescription: String,
+  publish: String,
+  productcode: String,
+  quantity: String,
+  colors: String,
+  category: String,
+  sizes: String,
+  regularprice: String,
+  saleprice: String,
+  gender: String,
+  tax: String,
+
+  date: {
     type: String,
-    default: "User",
+    default: () => new Date().toLocaleDateString(),
+  },
+
+  time: {
+    type: String,
+    default: () => new Date().toLocaleTimeString(),
+  },
+});
+const Product = mongoose.model("Product", productSchema);
+
+const OrderSchema = new mongoose.Schema({
+  userId: String,
+
+  orderNumber: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+
+  customerimage: String,
+  customerName: String,
+  email: String,
+  phone: String,
+
+  address: {
+    address1: String,
+    address2: String,
+    city: String,
+    state: String,
+    country: String,
+  },
+
+  products: [
+    {
+      productId: String,
+      productImage: String,
+      category: String,
+      productName: String,
+      productCode: String,
+      quantity: Number,
+      price: Number,
+      total: Number,
+    },
+  ],
+
+  taxes: Number,
+  discount: Number,
+  total: Number,
+
+  date: {
+    type: String,
+    default: () => new Date().toLocaleDateString(),
+  },
+
+  time: {
+    type: String,
+    default: () => new Date().toLocaleTimeString(),
   },
   status: {
     type: String,
-    default: "Active",
+    required: true,
+  }
+});
+const Order = mongoose.model("Order", OrderSchema);
+
+const CartSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
   },
-  resetOtp: String,
-  otpExpiry: Date,
+
+  customerimage: String,
+  customerName: String,
+  email: String,
+
+  address: {
+    address1: String,
+    address2: String,
+    city: String,
+    state: String,
+    country: String,
+  },
+
+  products: [
+    {
+      productId: String,
+      productImage: String,
+      category: String,
+      productName: String,
+      productCode: String,
+      quantity: Number,
+      price: Number,
+      total: Number,
+      selectedSizes: [String],
+      selectedColors: [String],
+    },
+  ],
+
+
 });
 
-const User = mongoose.model("User", userSchema);
+const Cart = mongoose.model("Cart", CartSchema);
 
 // API  for sigin 
 app.post("/signup", async (req, res) => {
@@ -232,19 +318,19 @@ app.post("/send-otp", async (req, res) => {
       to: email,
       subject: "Password Reset OTP",
       html: `
-    <div style="font-family: Arial, sans-serif; background:#f6f7fb; padding:40px;">
-        <div style="max-width:500px; margin:auto; background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.08); text-align:center;">
-            <h2 style="color:#333; margin-bottom:10px;">Password Reset Request</h2>
-            <p style="color:#666; font-size:14px; margin-bottom:25px;">We received a request to reset your password. Use the OTP below to proceed.</p>
-            <div style="font-size:28px; font-weight:bold; letter-spacing:6px; background:#f0f4ff; padding:15px 20px; border-radius:8px; display:inline-block; color:#2b59ff;">
-                ${otp}
-            </div>
-            <p style="color:#999; font-size:12px; margin-top:25px;">This OTP is valid for <b>5 minutes</b>. Do not share it with anyone.</p>
-            <hr style="margin:30px 0; border:none; border-top:1px solid #eee;" />
-            <p style="font-size:12px; color:#aaa;">If you didn’t request this, you can safely ignore this email.</p>
-        </div>
-    </div>
-    `,
+      <div style="font-family: Arial, sans-serif; background:#f6f7fb; padding:40px;">
+          <div style="max-width:500px; margin:auto; background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.08); text-align:center;">
+              <h2 style="color:#333; margin-bottom:10px;">Password Reset Request</h2>
+              <p style="color:#666; font-size:14px; margin-bottom:25px;">We received a request to reset your password. Use the OTP below to proceed.</p>
+              <div style="font-size:28px; font-weight:bold; letter-spacing:6px; background:#f0f4ff; padding:15px 20px; border-radius:8px; display:inline-block; color:#2b59ff;">
+                  ${otp}
+              </div>
+              <p style="color:#999; font-size:12px; margin-top:25px;">This OTP is valid for <b>5 minutes</b>. Do not share it with anyone.</p>
+              <hr style="margin:30px 0; border:none; border-top:1px solid #eee;" />
+              <p style="font-size:12px; color:#aaa;">If you didn’t request this, you can safely ignore this email.</p>
+          </div>
+      </div>
+      `,
     });
 
     return res.json({ message: "OTP sent successfully" });
@@ -312,31 +398,31 @@ app.post("/reset-password", async (req, res) => {
 // API endpoint to save user data
 app.post("/data", async (req, res) => {
   try {
-    const payload = {
-      ...req.body,
-      state: req.body.stateCode || req.body.state,
-    };
 
-    const user = new User(payload);
+    const user = new User(req.body);
+
+    // if (user.addresses.length > 0) {
+    //   user.defaultAddressId = user.addresses[0]._id;
+    // }
+
     await user.save();
 
-    res.status(201).json({ message: "User saved successfully", user });
+    res.status(201).json({
+      message: "User saved successfully",
+      user,
+    });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Error saving user", error: err });
+
+    res.status(500).json({
+      message: "Error saving user",
+      error: err,
+    });
   }
 });
 
 // API endpoint to get all users
-// app.get("/data", async (req, res) => {
-//   try {
-//     const users = await User.find();
-//     res.json(users);
-//   } catch (err) {
-//     res.status(500).json({ message: "Error fetching users" });
-//   }
-// });
-
 app.get("/data", async (req, res) => {
   try {
     const {
@@ -364,6 +450,7 @@ app.get("/data", async (req, res) => {
     if (status) {
       query.status = new RegExp(`^${status}$`, "i");
     }
+
     const sortFieldStr = Array.isArray(sortField)
       ? sortField[0]
       : sortField;
@@ -374,23 +461,62 @@ app.get("/data", async (req, res) => {
       : "firstName";
 
     const total = await User.countDocuments(query);
+
     const users = await User.find(query)
       .sort({ [safeSortField as string]: sortOrder === "asc" ? 1 : -1 })
       .skip((pageNum - 1) * limitNum)
-      .limit(limitNum);
+      .limit(limitNum)
+      .lean();
 
-      res.json({ data: users, total });
+    const userIds = users.map(u => u._id);
+
+    const addresses = await Address.find({
+      userId: { $in: userIds }
+    }).lean();
+
+    const result = users.map(user => {
+      const userAddresses = addresses.filter(
+        a => a.userId.toString() === user._id.toString()
+      );
+
+      const defaultAddress =
+        userAddresses.find(
+          a => a._id.toString() === user.defaultAddressId?.toString()
+        ) || userAddresses[0] || null;
+
+      return {
+        ...user,
+        defaultAddress,
+      };
+    });
+
+    res.json({
+      data: result,
+      total,
+    });
+
   } catch (err) {
     res.status(500).json({ message: "Error fetching users", error: err });
   }
 });
 
-
 // API get user by id 
+
 app.get("/data/:id", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    res.json(user);
+    const user = await User.findById(req.params.id).lean();
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const addresses = await Address.find({ userId: user._id });
+
+    res.json({
+      ...user,
+      addresses,
+    });
+
   } catch (err) {
     res.status(500).json({ message: "User not found" });
   }
@@ -441,7 +567,96 @@ app.get("/me", verifyToken, async (req: any, res) => {
   }
 });
 
-app.post("/add-address", verifyToken, async (req: any, res) => {
+
+app.post("/address", verifyToken, async (req: any, res) => {
+  try {
+
+    const { userId } = req.body;
+
+    if (!userId) { return res.status(400).json({ message: "userId required", }); }
+
+    const address = await Address.create({ ...req.body, userId, });
+
+    const user = await User.findById(userId);
+
+    if (!user) { return res.status(404).json({ message: "User not found", }); }
+
+    if (!user.defaultAddressId) {
+      user.defaultAddressId = address._id;
+      await user.save();
+    }
+
+    return res.status(201).json({
+      message: "Address created",
+      address,
+    });
+
+  } catch (err: any) {
+
+    console.error(err);
+
+    return res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
+
+// get all addresses list
+app.get("/addresses", verifyToken, async (req: any, res) => {
+  try {
+    const addresses = await Address.find({ userId: req.user.id });
+
+    const user = await User.findById(req.user.id);
+
+    res.json({
+      addresses,
+      defaultAddressId: user?.defaultAddressId || null,
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching addresses" });
+  }
+});
+
+// fetch single address by id 
+app.get("/address/:id", verifyToken, async (req: any, res) => {
+  try {
+    const address = await Address.findOne({
+      _id: req.params.id,
+      userId: req.user.id,
+    });
+
+    if (!address) {
+      return res.status(404).json({ message: "Address not found" });
+    }
+
+    res.json(address);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching address" });
+  }
+});
+
+// update address by id
+app.put("/address/:id", verifyToken, async (req, res) => {
+  const updated = await Address.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true }
+  );
+
+  res.json(updated);
+});
+
+//delete the address
+app.delete("/address/:id", verifyToken, async (req, res) => {
+  await Address.findByIdAndDelete(req.params.id);
+
+  res.json({ message: "Address deleted" });
+});
+
+//set the default in DB
+app.put("/user/default-address/:addressId", verifyToken, async (req: any, res) => {
   try {
     const user = await User.findById(req.user.id);
 
@@ -449,75 +664,387 @@ app.post("/add-address", verifyToken, async (req: any, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    user.addresses.push(req.body); 
-
+    user.defaultAddressId = req.params.addressId;
     await user.save();
 
+    res.json({ message: "Default address updated" });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+// save the product in DB
+
+app.post("/product", upload.single("image"), async (req, res) => {
+  try {
+    const product = new Product({
+      ...req.body,
+      imageName: req.file ? req.file.filename : null,
+    });
+
+    await product.save();
+
+    res.status(201).json({
+      message: "Product saved successfully",
+      product,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Error saving product", error: err });
+  }
+});
+
+// get all products from DB 
+app.get("/product", async (req, res) => {
+  try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const search = String(req.query.search || "").trim();
+
+    const query: any = {};
+
+
+    if (search) {
+      query.productName = {
+        $regex: `^${search}`,
+        $options: "i",
+      };
+    }
+
+    const productsPromise = Product.find(query)
+      .select(
+        "imageName Productdescription category productName quantity regularprice saleprice publish date time"
+      )
+      .sort({ _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const totalPromise = Product.countDocuments(query);
+
+    const [products, total] = await Promise.all([
+      productsPromise,
+      totalPromise,
+    ]);
+
+    return res.json({
+      data: products,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      message: "Error fetching products",
+    });
+  }
+});
+
+
+// delete product from DB  
+app.delete("/product/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedProduct = await Product.findByIdAndDelete(id);
+
+    if (!deletedProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.json({ message: "Product deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Delete failed", error: err });
+  }
+});
+
+// get product by id 
+app.get("/product/:id", async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).lean();
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+
     res.json({
-      message: "Address added",
-      addresses: user.addresses,
+      ...product,
     });
 
   } catch (err) {
-    res.status(500).json({ message: "Error adding address" });
+    res.status(500).json({ message: "Product not found" });
   }
 });
 
-app.get("/addresses", verifyToken, async (req: any, res) => {
-  const user = await User.findById(req.user.id);
+app.put("/product/:id", upload.single("image"), verifyToken, async (req, res) => {
+  try {
+    const updateData = {
+      ...req.body,
+    };
 
-  res.json(user?.addresses || []);
+    if (req.file) {
+      updateData.imageName = req.file.filename;
+    }
+
+    const updated = await Product.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({
+      message: "Update failed",
+      error: err,
+    });
+  }
+}
+);
+const counterSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  value: { type: Number, default: 0 },
 });
 
-app.get("/address/:id", verifyToken, async (req: any, res) => {
+const Counter = mongoose.model("Counter", counterSchema);
+
+const generateOrderNumber = async () => {
+  const counter = await Counter.findOneAndUpdate(
+    { name: "order" },
+    { $inc: { value: 1 } },
+    { new: true, upsert: true }
+  );
+
+  return `#${1000 + counter.value}`;
+};
+// API to create order
+app.post("/order", async (req, res) => {
   try {
-    const userId = req.user?.id;
-    const addressId = req.params.id;
+    const orderNumber = await generateOrderNumber();
 
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+    const order = new Order({
+      ...req.body,
+      orderNumber,
+    });
+
+    await order.save();
+
+    res.status(201).json({
+      message: "Order created successfully",
+      order,
+    });
+  } catch (err: any) {
+    console.error("ORDER ERROR:", err);
+
+    res.status(500).json({
+      message: "Error creating order",
+      error: err.message,
+    });
+  }
+});
+
+// API to get orders list
+app.get("/orders", async (req, res) => {
+  try {
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+
+    const limit = Math.min(Number(req.query.limit) || 5, 50);
+
+    const search = String(req.query.search || "").trim();
+
+    const query: any = {};
+
+    if (search) {
+
+      const users = await User.find({
+        $or: [
+          {
+            firstName: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            lastName: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+        ],
+      }).select("_id");
+
+      query.userId = {
+        $in: users.map((u) => u._id),
+      };
     }
 
-    const user = await User.findById(userId);
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
 
-    const address = user.addresses.id(addressId);
+    const total = await Order.countDocuments(query);
 
-    if (!address) {
-      return res.status(404).json({ message: "Address not found" });
-    }
+    const orders = await Order.find(query)
+      .populate("userId")
+      .populate("products.productId")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
 
-    res.json(address);
+    return res.json({
+      data: orders,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    });
 
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ message: "Error fetching address" });
+
+    res.status(500).json({
+      message: "Error fetching orders",
+      error: err,
+    });
   }
 });
 
-app.put("/address/:addressId", verifyToken, async (req: any, res) => {
-  const { addressId } = req.params;
 
-  const user = await User.findOneAndUpdate(
-    { _id: req.user.id, "addresses._id": addressId },
-    { $set: { "addresses.$": req.body } },
-    { new: true }
-  );
+app.post("/cart", async (req, res) => {
+  try {
 
-  res.json(user);
+    const { userId, products } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "userId is required"
+      });
+    }
+
+    if (!products || !products.length) {
+      return res.status(400).json({
+        message: "products are required"
+      });
+    }
+
+    let cart = await Cart.findOne({ userId });
+
+    if (cart) {
+      cart.products.push(products[0]);
+      await cart.save();
+
+      return res.status(200).json({
+        message: "Product added to cart",
+        cart,
+      });
+    }
+
+    cart = new Cart(req.body);
+
+    await cart.save();
+
+    res.status(201).json({
+      message: "Cart created",
+      cart,
+    });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Cart error",
+      error: err,
+    });
+  }
+});
+app.get("/cart/:userId", async (req, res) => {
+  try {
+    const cart = await Cart.findOne({
+      userId: req.params.userId,
+    }).lean();
+
+    if (!cart) {
+      return res.json({
+        products: [],
+      });
+    }
+
+    res.json(cart);
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "Error fetching cart",
+      error: err,
+    });
+  }
 });
 
-app.delete("/address/:addressId", verifyToken, async (req: any, res) => {
-  const { addressId } = req.params;
+app.delete("/cart/:userId/:itemId", async (req, res) => {
+  try {
+    const { userId, itemId } = req.params;
 
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { $pull: { addresses: { _id: addressId } } },
-    { new: true }
-  );
+    const cart = await Cart.findOne({ userId });
 
-  res.json({ message: "Address deleted", user });
+    if (!cart) {
+      return res.status(404).json({
+        message: "Cart not found",
+      });
+    }
+
+    cart.products.pull({ _id: itemId });
+
+    await cart.save();
+
+    res.json({
+      message: "Item removed from cart",
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "Error removing item from cart",
+      error: err,
+    });
+  }
+});
+
+// Api To delete the oreder by id
+app.delete("/orders/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedOrder = await Order.findByIdAndDelete(id);
+
+    if (!deletedOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.json({ message: "Order deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Delete failed", error: err });
+  }
+});
+
+
+// CLEAR USER CART
+app.delete("/cart/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const deletedCart = await Cart.findOneAndDelete({ userId });
+
+    if (!deletedCart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    res.json({ message: "Cart cleared successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Clear cart failed", error: err });
+  }
 });

@@ -7,7 +7,7 @@ import axios from "axios";
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { StatusSelecter, RoleSelecter } from "../../../components/select";
+import { Selecter, RoleSelecter } from "../../../components/select";
 import Toaster from "../../../components/toaster";
 
 
@@ -32,6 +32,7 @@ const EditUser = () => {
         address2: "",
         status: "",
         role: "",
+        defaultAddressId: null,
     });
     useEffect(() => {
         const fetchUser = async () => {
@@ -39,17 +40,23 @@ const EditUser = () => {
 
             try {
                 const res = await axios.get(`http://localhost:3003/data/${id}`);
-
                 const data = res.data;
+
+                const defaultAddress = data.addresses?.find((a: any) => a._id === data.defaultAddressId) || data.addresses?.[0];
 
                 setUserData({
                     ...data,
 
-                    stateName: data.stateName || "",
-                    stateCode: data.stateCode || "",
+                    stateName: defaultAddress?.stateName || "",
+                    stateCode: defaultAddress?.stateCode || "",
+                    country: defaultAddress?.country || "",
+                    countrycode: defaultAddress?.countrycode || "",
+                    countryNumber: defaultAddress?.countryNumber || "",
+                    address1: defaultAddress?.address1 || "",
+                    address2: defaultAddress?.address2 || "",
+                    city: defaultAddress?.city || "",
 
-                    country: data.country || "",
-                    countrycode: data.countrycode || "",
+                    defaultAddressId: defaultAddress?._id || null,
                 });
             } catch (err) {
                 console.error(err);
@@ -70,28 +77,63 @@ const EditUser = () => {
             [field]: false,
         }));
     };
+
     const handleSubmit = async () => {
         const isValid = validate();
 
         if (!isValid) return;
+
         try {
-            const payload = {
-                ...userData,
-                state: userData.stateCode,
+            await axios.put(`http://localhost:3003/data/${id}`, {
+                image: userData.image,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                email: userData.email,
+                phone: userData.phone,
+                role: userData.role,
+                status: userData.status,
+            });
+            const addressPayload = {
+                address1: userData.address1,
+                address2: userData.address2,
+                city: userData.city,
+                stateCode: userData.stateCode,
+                stateName: userData.stateName,
+                country: userData.country,
+                countrycode: userData.countrycode,
+                countryNumber: userData.countryNumber,
+                userId: id,
             };
 
-            await axios.put(`http://localhost:3003/data/${id}`, payload);
+
+            if (userData.defaultAddressId) {
+                await axios.put(`http://localhost:3003/address/${userData.defaultAddressId}`, addressPayload,
+                    {
+                        headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, },
+                    }
+                );
+            } else {
+                const addressRes = await axios.post(`http://localhost:3003/address`, addressPayload,
+                    {
+                        headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, },
+                    }
+                );
+
+                if (addressRes.data?._id) {
+                    await axios.put(`http://localhost:3003/data/${id}`, { defaultAddressId: addressRes.data._id, });
+                }
+            }
 
             setOpenToast(true);
 
             setTimeout(() => {
                 navigate("/app/user/list");
             }, 1500);
+
         } catch (err) {
             console.error("Update failed:", err);
         }
     };
-    
     const validate = () => {
         const newErrors: any = {};
 
@@ -148,10 +190,6 @@ const EditUser = () => {
                             <UserInputField PlaceHolder="City" value={userData.city} onChange={(e: any) => handleChange("city", e.target.value)} error={errors.city} />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                            {/* <StateInput countryCode={userData.countrycode}
-                                value={userData.stateCode ? { label: userData.stateName || "", code: userData.stateCode, } : null}
-                                onChange={(state) => { setUserData((prev: any) => ({ ...prev, stateName: state?.label || "", stateCode: state?.code || "", })); }}
-                            /> */}
                             <StateInput countryCode={userData.country} error={errors.stateName || errors.stateCode}
                                 value={userData.stateCode ? { label: userData.stateName, code: userData.stateCode, } : null}
                                 onChange={(state) => { setUserData((prev) => ({ ...prev, stateName: state?.label || "", stateCode: state?.code || "", })); }}
@@ -169,10 +207,10 @@ const EditUser = () => {
                             <UserInputField PlaceHolder="Address2" value={userData.address2} onChange={(e: any) => handleChange("address2", e.target.value)} error={errors.address2} />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 6 }}>
-                            <RoleSelecter value={userData.role} onChange={(value: string) => handleChange("role", value)} error={errors.role} />
+                             <RoleSelecter value={userData.role} onChange={(value: string) => handleChange("role", value)} error={errors.role} label="Role" FirstItem="Admin" SecondItem="User" />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 6 }}>
-                            <StatusSelecter value={userData.status} onChange={(value: string) => handleChange("status", value)} error={errors.status} />
+                             <Selecter value={userData.status} onChange={(value: string) => handleChange("status", value)} error={errors.status} label="Status" FirstItem="Active" SecondItem="InActive" ThridItem="Banned"/>
                         </Grid>
                     </Grid>
                     <Box sx={{ display: "flex", justifyContent: "flex-end", }}>

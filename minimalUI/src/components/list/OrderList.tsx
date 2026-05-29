@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
     Box, Card, CardContent, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
-    TablePagination, Checkbox, Tab, TextField, Stack, CircularProgress
+    TablePagination, Checkbox, TextField, Stack, CircularProgress
 } from "@mui/material";
-import { TabContext, TabList, TabPanel } from "@mui/lab";
-import { orders, getUserStatusStyle } from "../contact/OrderContant";
+import { TabContext, TabPanel } from "@mui/lab";
+import { getUserStatusStyle, } from "../contact/OrderContant";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
 import StyledChip from "../chip";
@@ -13,8 +13,7 @@ import { useNavigate } from "react-router-dom";
 import DeletePopup from "../popup/Deletepopup";
 import ActionMenu from "../ActionMenu";
 import { useTheme } from "@mui/material/styles";
-import { SyncLoader } from "react-spinners";
-
+import axios from "axios";
 
 const List: React.FC = () => {
     const [page, setPage] = useState(0);
@@ -24,28 +23,63 @@ const List: React.FC = () => {
     const [search, setSearch] = useState("");
     const navigate = useNavigate();
     const [openDeletePopup, setOpenDeletePopup] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [orders, setOrder] = useState<any[]>([]);
+    const [totalCount, setTotalCount] = useState(0);
+    const [sortField, setSortField] = useState<string>("productName");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
     const theme = useTheme();
 
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setLoading(false);
-        }, 3000);
+        const fetchUsers = async () => {
+            try {
+                setLoading(true);
 
-        return () => clearTimeout(timer);
-    }, []);
+                const res = await axios.get("http://localhost:3003/orders",
+                    {
+                        params: {
+                            page: page + 1,
+                            limit: rowsPerPage,
+                            search,
+                            sortField,
+                            sortOrder,
+                        },
+                    }
+                );
 
-    const handleDelete = (id: number | null) => {
+                setOrder(res.data.data);
+                setTotalCount(res.data.total);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUsers();
+    }, [page, rowsPerPage, search, sortField, sortOrder]);
+
+
+    const handleDelete = async (id: string | null) => {
         if (!id) return;
-        console.log("Deleting user with id:", id);
+
+        try {
+            await axios.delete(`http://localhost:3003/orders/${id}`);
+
+            setOrder((prevOrder) =>
+                prevOrder.filter((Order) => Order._id !== id)
+            );
+        } catch (error) {
+            console.error("Delete failed:", error);
+        }
     };
-    const handleChangeTab = (_: React.SyntheticEvent, newValue: string) => {
-        setValue(newValue);
-        setPage(0);
-        setSelected([]);
-    };
+    // const handleChangeTab = (_: React.SyntheticEvent, newValue: string) => {
+    //     setValue(newValue);
+    //     setPage(0);
+    //     setSelected([]);
+    // };
 
     const handleChangePage = (_: unknown, newPage: number) => {
         setPage(newPage);
@@ -58,7 +92,7 @@ const List: React.FC = () => {
         setPage(0);
     };
 
-    const handleSelectRow = (id: number) => {
+    const handleSelectRow = (id: string) => {
         const strId = id.toString();
         setSelected((prev) =>
             prev.includes(strId)
@@ -67,67 +101,40 @@ const List: React.FC = () => {
         );
     };
 
-    const isSelected = (id: number) => selected.includes(id.toString());
+    const isSelected = (id: string) => selected.includes(id.toString());
 
     const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.checked) {
-            const newSelected = filteredRows.map((row) =>
-                row.id.toString()
-            );
+            const newSelected = orders.map((row) => row._id.toString());
             setSelected(newSelected);
         } else {
             setSelected([]);
         }
     };
 
-    const allCount = orders.length;
-    const completedCount = orders.filter((i) => i.status.toLowerCase() === "completed").length;
-    const pendingCount = orders.filter((i) => i.status.toLowerCase() === "pending").length
-
-    const statusMap: Record<string, string> = {
-        "2": "pending",
-        "3": "completed",
-    };
-
-    const filteredRows =
-        value === "1"
-            ? orders.filter((inv) =>
-                inv.customer.name.toLowerCase().includes(search.toLowerCase())
-            )
-            : orders.filter(
-                (inv) =>
-                    inv.status.toLowerCase() === statusMap[value] &&
-                    inv.customer.name.toLowerCase().includes(search.toLowerCase())
-            );
-
-    const paginatedRows = filteredRows.slice(
-        page * rowsPerPage,
-        page * rowsPerPage + rowsPerPage
-    );
-
     return (
         <Grid>
             <Card sx={{ borderRadius: 3, boxShadow: "0 3px 10px rgba(133, 131, 131, 0.12)", mt: 4, }}>
                 <CardContent sx={{ p: 0, backgroundColor: theme.palette.background.listColor, }}>
                     <TabContext value={value}>
-                        <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3, }}>
-                            <TabList variant="scrollable" onChange={handleChangeTab} sx={{
-                                "& .MuiTabs-indicator": { backgroundColor: theme.palette.background.whiteBlack, },
-                            }} scrollButtons="auto">
-                                <Tab sx={{ "&.Mui-selected": { color: theme.palette.background.whiteBlack }, textTransform: "none", }} label={
-                                    <Box display="flex" alignItems="center" gap={1}> All
-                                        <StyledChip label={allCount.toString()} bgcolor={theme.palette.background.whiteBlack} color={theme.palette.background.listColor} />
-                                    </Box>} value="1" />
-                                <Tab sx={{ "&.Mui-selected": { color: theme.palette.background.whiteBlack }, textTransform: "none", }} label={
-                                    <Box display="flex" alignItems="center" gap={1}>Pending
-                                        <StyledChip label={pendingCount.toString()} bgcolor={value === "2" ? "#ffb84d" : "#fdebd1"} color={value === "2" ? "black.main" : "#B76E00"} />
-                                    </Box>} value="2" />
-                                <Tab sx={{ "&.Mui-selected": { color: theme.palette.background.whiteBlack }, textTransform: "none", }} label={
-                                    <Box display="flex" alignItems="center" gap={1}> Completed
-                                        <StyledChip label={completedCount.toString()} bgcolor={value === "3" ? "#22C55E" : "green.light"} color={value === "3" ? "white.main" : "#00A76F"} />
-                                    </Box>} value="3" />
-                            </TabList>
-                        </Box>
+                        {/* <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3, }}>
+                                <TabList variant="scrollable" onChange={handleChangeTab} sx={{
+                                    "& .MuiTabs-indicator": { backgroundColor: theme.palette.background.whiteBlack, },
+                                }} scrollButtons="auto">
+                                    <Tab sx={{ "&.Mui-selected": { color: theme.palette.background.whiteBlack }, textTransform: "none", }} label={
+                                        <Box display="flex" alignItems="center" gap={1}> All
+                                            <StyledChip label={allCount.toString()} bgcolor={theme.palette.background.whiteBlack} color={theme.palette.background.listColor} />
+                                        </Box>} value="1" />
+                                    <Tab sx={{ "&.Mui-selected": { color: theme.palette.background.whiteBlack }, textTransform: "none", }} label={
+                                        <Box display="flex" alignItems="center" gap={1}>Pending
+                                            <StyledChip label={pendingCount.toString()} bgcolor={value === "2" ? "#ffb84d" : "#fdebd1"} color={value === "2" ? "black.main" : "#B76E00"} />
+                                        </Box>} value="2" />
+                                    <Tab sx={{ "&.Mui-selected": { color: theme.palette.background.whiteBlack }, textTransform: "none", }} label={
+                                        <Box display="flex" alignItems="center" gap={1}> Completed
+                                            <StyledChip label={completedCount.toString()} bgcolor={value === "3" ? "#22C55E" : "green.light"} color={value === "3" ? "white.main" : "#00A76F"} />
+                                        </Box>} value="3" />
+                                </TabList>
+                            </Box> */}
                         <TabPanel value={value} sx={{ p: 0 }}>
                             <TextField placeholder="Search customer..." size="small" value={search} onChange={(e) => setSearch(e.target.value)} sx={{
                                 width: { xs: "100%", sm: 300, md: 400, lg: 550 },
@@ -148,8 +155,8 @@ const List: React.FC = () => {
                                     <TableHead>
                                         <TableRow sx={{ backgroundColor: theme.palette.background.TableRowColor }}>
                                             <TableCell padding="checkbox" >
-                                                <Checkbox indeterminate={selected.length > 0 && selected.length < filteredRows.length}
-                                                    checked={filteredRows.length > 0 && selected.length === filteredRows.length}
+                                                <Checkbox indeterminate={selected.length > 0 && selected.length < orders.length}
+                                                    checked={orders.length > 0 && selected.length === orders.length}
                                                     onChange={handleSelectAll}
                                                     sx={{
                                                         color: "#637381", "&.Mui-checked": { color: "green.main" }, "&.MuiCheckbox-indeterminate": { color: "green.main" },
@@ -174,7 +181,7 @@ const List: React.FC = () => {
                                                 </Box>
                                             </TableCell>
                                         </TableRow>
-                                    ) : filteredRows.length === 0 ? (
+                                    ) : orders.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={7} align="center">
                                                 <Typography sx={{ py: 4, color: "#637381" }}>
@@ -184,27 +191,27 @@ const List: React.FC = () => {
                                         </TableRow>
                                     ) : (
                                         <TableBody>
-                                            {paginatedRows.map((order) => {
-                                                const isItemSelected = isSelected(order.id);
+                                            {orders.map((order) => {
+                                                const isItemSelected = isSelected(order._id);
                                                 return (
-                                                    <TableRow key={order.id} selected={isItemSelected} hover sx={{
+                                                    <TableRow key={order._id} selected={isItemSelected} hover sx={{
                                                         cursor: "pointer",
                                                         "&:hover": { backgroundColor: isItemSelected ? "rgba(0, 167, 111, 0.2)" : "rgba(0, 167, 111, 0.08)", },
                                                         "&.Mui-selected": { backgroundColor: "rgba(105, 240, 195, 0.16)", "&:hover": { backgroundColor: "rgba(0, 167, 111, 0.2)", }, },
                                                     }}>
                                                         <TableCell padding="checkbox" >
-                                                            <Checkbox checked={isItemSelected} onChange={() => handleSelectRow(order.id)} sx={{
+                                                            <Checkbox checked={isItemSelected} onChange={() => handleSelectRow(order._id)} sx={{
                                                                 color: "#637381", "&.Mui-checked": { color: "green.main" },
                                                                 "& .MuiSvgIcon-root": { borderRadius: "50%", width: 20, height: 20 },
                                                             }} />
                                                         </TableCell>
-                                                        <TableCell sx={{ textDecoration: "underline" }}>#{order.id}</TableCell>
+                                                        <TableCell sx={{ textDecoration: "underline" }}>{order.orderNumber}</TableCell>
                                                         <TableCell>
                                                             <Box display="flex" alignItems="center" gap={1}>
-                                                                <Box component="img" src={order.customer.image} alt={order.customer.name} sx={{ width: 40, height: 40, borderRadius: "50%", }} />
+                                                                <Box component="img" src={order.customerimage} alt={order.customerName} sx={{ width: 40, height: 40, borderRadius: "50%", }} />
                                                                 <Stack>
-                                                                    <Typography fontSize={14}>{order.customer.name}</Typography>
-                                                                    <Typography fontSize={13} color="neutral.main" > {order.customer.email} </Typography>
+                                                                    <Typography fontSize={14}>{order.customerName}</Typography>
+                                                                    <Typography fontSize={13} color="neutral.main" > {order.email} </Typography>
                                                                 </Stack>
                                                             </Box>
                                                         </TableCell>
@@ -214,15 +221,25 @@ const List: React.FC = () => {
                                                                 <Typography fontSize={13} color="text.secondary">{order.time}</Typography>
                                                             </Stack>
                                                         </TableCell>
-                                                        <TableCell>{order.items}</TableCell>
-                                                        <TableCell>{order.product.price}</TableCell>
                                                         <TableCell>
-                                                            <StyledChip label={order.status} bgcolor={getUserStatusStyle(order.status).backgroundColor}
-                                                                color={getUserStatusStyle(order.status).color} />
+                                                            {order.products?.reduce(
+                                                                (sum: number, item: any) => sum + item.quantity,
+                                                                0
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            $ {order.total?.toFixed(2)}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <StyledChip
+                                                                label={order.status}
+                                                                bgcolor={getUserStatusStyle(order.status).backgroundColor}
+                                                                color={getUserStatusStyle(order.status).color}
+                                                            />
                                                         </TableCell>
                                                         <TableCell align="right">
-                                                            <ActionMenu firstlink="View" secoundlink="Edit" thirdlink="Delete" onView={() => navigate(`/app/order/details/${order.id}`)}
-                                                                onDelete={() => { setSelectedUserId(order.id); setOpenDeletePopup(true); }} />
+                                                            <ActionMenu firstlink="View" secoundlink="Edit" thirdlink="Delete" onView={() => navigate(`/app/order/details/${order._id}`)}
+                                                                onDelete={() => { setSelectedUserId(order._id); setOpenDeletePopup(true); }} />
                                                             <DeletePopup open={openDeletePopup}
                                                                 onClose={() => setOpenDeletePopup(false)}
                                                                 onConfirm={() => { handleDelete(selectedUserId); setOpenDeletePopup(false); }} />
@@ -235,7 +252,7 @@ const List: React.FC = () => {
                                 </Table>
                             </TableContainer>
                             <Stack direction="row" justifyContent="end" px={2}>
-                                <TablePagination component="div" count={filteredRows.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage}
+                                <TablePagination component="div" count={totalCount} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage}
                                     onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25]} />
                             </Stack>
                         </TabPanel>

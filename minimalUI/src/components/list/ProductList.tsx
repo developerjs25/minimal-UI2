@@ -1,16 +1,19 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Box, Card, CardContent, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, TablePagination,
-  Checkbox, TextField, Stack, LinearProgress, InputAdornment, CircularProgress,} from "@mui/material";
+import React, { useState, useEffect } from "react";
+import {
+  Box, Card, CardContent, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, TablePagination,
+  Checkbox, TextField, Stack, LinearProgress, InputAdornment,
+} from "@mui/material";
 import { TabContext, TabPanel } from "@mui/lab";
 import { useNavigate } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
-import { getProductStatusStyle, getStockStatus } from "../contact/ProductContant";
+import { getProductpublishStyle, getStockStatus } from "../contact/ProductContant";
 import StyledChip from "../chip";
-import { productRows } from "../contact/ProductContant";
 import ActionMenu from "../ActionMenu";
 import DeletePopup from "../popup/Deletepopup";
 import { useTheme } from "@mui/material/styles";
-import { SyncLoader } from "react-spinners";
+import { BarLoader } from "react-spinners";
+import axios from "axios";
+import Images from "../../constants/Images";
 
 const List: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -20,24 +23,60 @@ const List: React.FC = () => {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const [openDeletePopup, setOpenDeletePopup] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const theme = useTheme();
+  const [sortField, setSortField] = useState<string>("productName");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [product, setProduct] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 5000);
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
 
-    return () => clearTimeout(timer);
-  }, []);
+        const res = await axios.get("http://localhost:3003/product", {
+          params: {
+            page: page + 1,
+            limit: rowsPerPage,
+            search,
+            sortField,
+            sortOrder,
+          },
+        });
 
-  const handleDelete = (id: number | null) => {
+        setProduct(res.data.data);
+        setTotalCount(res.data.total);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [page, rowsPerPage, search, sortField, sortOrder]);
+
+  const handleDelete = async (id: string) => {
     if (!id) return;
-    console.log("Deleting product with id:", id);
+
+    try {
+      await axios.delete(`http://localhost:3003/product/${id}`);
+
+      setProduct((prevProduct) =>
+        prevProduct.filter((Product) => Product._id !== id)
+      );
+    } catch (error) {
+      console.error("Delete failed:", error);
+    }
   };
 
-  
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(0);
+  };
 
   const handleSelectRow = (id: number) => {
     const strId = id.toString();
@@ -48,40 +87,34 @@ const List: React.FC = () => {
     );
   };
 
+  const isSelected = (id: number) => selected.includes(id.toString());
+
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      setSelected(filteredRows.map((row) => row.id.toString()));
+      const newSelected = product
+        .filter((row) => row._id != null)
+        .map((row) => row._id.toString());
+      setSelected(newSelected);
     } else {
       setSelected([]);
     }
   };
 
-  const filteredRows = useMemo(() => {
-    return productRows.filter((inv) => {
-      const matchesSearch =
-        inv.name.toLowerCase().includes(search.toLowerCase()) ||
-        inv.item.toLowerCase().includes(search.toLowerCase());
-
-      if (value === "1") return matchesSearch;
-      if (value === "2") return inv.status.toLowerCase() === "active" && matchesSearch;
-      if (value === "3") return inv.status.toLowerCase() === "pending" && matchesSearch;
-
-      return false;
-    });
-  }, [value, search]);
-
-  const paginatedRows = filteredRows.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
-
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
   return (
     <Grid>
       <Card sx={{ borderRadius: 3, mt: 4 }}>
         <CardContent sx={{ p: 0, backgroundColor: theme.palette.background.listColor, }}>
           <TabContext value={value}>
             <TabPanel value={value} sx={{ p: 0 }}>
-              <TextField placeholder="Search..." size="small" value={search} onChange={(e) => setSearch(e.target.value)} sx={{
+              <TextField placeholder="Search..." size="small" value={search} onChange={(e) => handleSearch(e.target.value)} sx={{
                 width: 550,
                 "& .MuiOutlinedInput-root": { borderRadius: 2, py: 0.7, m: 2, },
                 "&.Mui-focused fieldset": { borderColor: "#3b444e" },
@@ -101,10 +134,10 @@ const List: React.FC = () => {
                       <TableCell padding="checkbox">
                         <Checkbox
                           indeterminate={
-                            selected.length > 0 && selected.length < filteredRows.length
+                            selected.length > 0 && selected.length < product.length
                           }
                           checked={
-                            filteredRows.length > 0 && selected.length === filteredRows.length
+                            product.length > 0 && selected.length === product.length
                           }
                           onChange={handleSelectAll}
                           sx={{
@@ -115,7 +148,7 @@ const List: React.FC = () => {
                           }}
                         />
                       </TableCell>
-                      <TableCell sx={{ borderLeft: "1px solid #0000", fontWeight: 550, color: "#637381", }}>Product</TableCell>
+                      <TableCell onClick={() => handleSort("productName")} sx={{ borderLeft: "1px solid #0000", fontWeight: 550, color: "#637381", }}>Product</TableCell>
                       <TableCell sx={{ borderLeft: "1px solid #0000", fontWeight: 550, color: "#637381", }}>Create at</TableCell>
                       <TableCell sx={{ borderLeft: "1px solid #0000", fontWeight: 550, color: "#637381", }}>Stock</TableCell>
                       <TableCell sx={{ borderLeft: "1px solid #0000", fontWeight: 550, color: "#637381", }}>Price</TableCell>
@@ -124,33 +157,37 @@ const List: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        <Box sx={{ py: 6, display: "flex", justifyContent: "center", alignItems: "center", }}>
-                          <SyncLoader color={theme.palette.green.main} loading={true} />
-                          {/* <CircularProgress sx={{ color: "green.main" }} /> */}
+                    <TableBody>
+                      <TableRow>
+                        <TableCell colSpan={7} align="center">
+                          <Box sx={{ py: 6, display: "flex", justifyContent: "center", alignItems: "center", }}>
+                            <BarLoader color={theme.palette.green.main} loading={true} />
                           </Box>
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        <Typography sx={{ py: 4, color: "#637381" }}>User not found</Typography>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  ) : product.length === 0 ? (
+                    <TableBody>
+                      <TableRow>
+                        <TableCell colSpan={7} align="center">
+                          <Box component="img" src={Images.NoUserImage} alt="User not found" />
+                          <Typography sx={{ pb: 4, color: "#637381" }}>Product not found</Typography>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
                   ) : (
                     <TableBody>
-                      {paginatedRows.map((product) => {
-                        const isItemSelected = selected.includes(product.id.toString());
+                      {product.map((item) => {
+                        const isItemSelected = isSelected(item._id);
 
                         return (
-                          <TableRow key={product.id} selected={isItemSelected} hover sx={{
+                          <TableRow key={item._id} selected={isItemSelected} hover sx={{
                             cursor: "pointer",
                             "&:hover": { backgroundColor: isItemSelected ? "rgba(0, 167, 111, 0.2)" : "rgba(0, 167, 111, 0.08)", },
                             "&.Mui-selected": { backgroundColor: "rgba(105, 240, 195, 0.16)", "&:hover": { backgroundColor: "rgba(0, 167, 111, 0.2)", }, },
                           }}>
                             <TableCell padding="checkbox">
-                              <Checkbox checked={isItemSelected} onChange={() => handleSelectRow(product.id)}
+                              <Checkbox checked={isItemSelected} onChange={() => handleSelectRow(item._id)}
                                 sx={{
                                   color: "#637381", "&.Mui-checked": { color: "#00A76F" },
                                   "& .MuiSvgIcon-root": { borderRadius: "50%", width: 20, height: 20 },
@@ -159,47 +196,55 @@ const List: React.FC = () => {
 
                             <TableCell sx={{ "&:hover": { color: "#00A76F", }, }}>
                               <Box display="flex" alignItems="center" gap={2}>
-                                <Box component="img" src={product.image} alt={product.name} sx={{ width: 70, height: 70, borderRadius: 2 }} />
+                                <Box component="img" src={`http://localhost:3003/uploads/${item.imageName}`} alt={item.productName} sx={{ width: 70, height: 70, borderRadius: 2 }} />
                                 <Stack>
-                                  <Typography fontWeight={550} fontSize={14}>{product.name}</Typography>
-                                  <Typography fontSize={13} color="#919EAB">{product.item}</Typography>
+                                  <Typography fontWeight={550} fontSize={14}>{item.productName}</Typography>
+                                  <Typography fontSize={13} color="#919EAB">{item.category}</Typography>
                                 </Stack>
                               </Box>
                             </TableCell>
                             <TableCell sx={{ "&:hover": { color: "#00A76F", } }} >
                               <Stack>
-                                <Typography fontSize={14}>{product.date}</Typography>
-                                <Typography fontSize={13} color="text.secondary">{product.time}</Typography>
+                                <Typography fontSize={14}>{item.date}</Typography>
+                                <Typography fontSize={13} color="text.secondary">{item.time}</Typography>
                               </Stack>
                             </TableCell>
 
                             <TableCell>
                               {(() => {
-                                const stockStatus = getStockStatus(product.stock);
+                                const stockStatus = getStockStatus(item.quantity);
                                 return (
                                   <>
-                                    <LinearProgress variant="determinate" value={stockStatus.progress} sx={{
-                                      height: 6, width: 79, borderRadius: 2, backgroundColor: "#F4F6F8",
-                                      "& .MuiLinearProgress-bar": { backgroundColor: stockStatus.color, }, mb: 1,
-                                    }} />
+                                    <LinearProgress variant="determinate" value={Math.min(stockStatus.progress, 100)}
+                                      sx={{
+                                        height: 6, width: 90, borderRadius: 2, backgroundColor: stockStatus.background,
+                                        "& .MuiLinearProgress-bar": { backgroundColor: stockStatus.color, transition: "0.4s ease", },
+                                      }}
+                                    />
                                     <Typography fontSize={13} color="text.secondary">{stockStatus.label}</Typography>
                                   </>
                                 );
                               })()}
                             </TableCell>
-                            <TableCell sx={{ "&:hover": { color: "#00A76F", }, }}>{product.price}</TableCell>
+                            <TableCell sx={{ "&:hover": { color: "#00A76F", }, }}>${item.saleprice || item.regularprice}</TableCell>
                             <TableCell>
-                              <StyledChip label={product.status} bgcolor={getProductStatusStyle(product.status).backgroundColor}
-                                color={getProductStatusStyle(product.status).color} />
+                              <StyledChip
+                                label={item.publish}
+                                bgcolor={getProductpublishStyle(item.publish).backgroundColor}
+                                color={getProductpublishStyle(item.publish).color}
+                              />
                             </TableCell>
                             <TableCell align="right">
-                              <ActionMenu firstlink="View" secoundlink="Edit" thirdlink="Delete" onView={() => navigate(`/app/products/details/${product.id}`)}
-                                onEdit={() => navigate(`/app/products/edit/${product.id}`)}
-                                onDelete={() => { setSelectedUserId(product.id); setOpenDeletePopup(true); }} />
+                              <ActionMenu firstlink="View" secoundlink="Edit" thirdlink="Delete" onView={() => navigate(`/app/products/details/${item._id}`)}
+                                onEdit={() => navigate(`/app/products/edit/${item._id}`)}
+                                onDelete={() => { setSelectedProductId(item._id); setOpenDeletePopup(true); }} />
 
-                              <DeletePopup open={openDeletePopup}
-                                onClose={() => setOpenDeletePopup(false)}
-                                onConfirm={() => { handleDelete(selectedUserId); setOpenDeletePopup(false); }} />
+                              <DeletePopup open={openDeletePopup} onClose={() => setOpenDeletePopup(false)} onConfirm={() => {
+                                if (selectedProductId !== null) {
+                                  handleDelete(selectedProductId.toString());
+                                }
+                                setOpenDeletePopup(false);
+                              }} />
                             </TableCell>
                           </TableRow>
                         );
@@ -209,16 +254,8 @@ const List: React.FC = () => {
                 </Table>
               </TableContainer>
 
-              <TablePagination
-                component="div"
-                count={filteredRows.length}
-                page={page}
-                onPageChange={(_, newPage) => setPage(newPage)}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value, 10));
-                  setPage(0);
-                }}
+              <TablePagination component="div" count={totalCount} page={page} onPageChange={(_, newPage) => setPage(newPage)} rowsPerPage={rowsPerPage}
+                rowsPerPageOptions={[5, 10, 25]} onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
               />
             </TabPanel>
           </TabContext>

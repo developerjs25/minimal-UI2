@@ -76,41 +76,63 @@ export const productRows: ProductList[] = [
 ];
 
 
-export const getProductStatusStyle = (status: string) => {
-  switch (status.toLowerCase()) {
+export const getProductpublishStyle = (publish: string) => {
+  switch (publish.toLowerCase()) {
     case "draft":
       return {
-        color: "black.main",
+        color: "#f1f1f1",
         backgroundColor: "rgba(145, 158, 171, 0.16)",
       };
-    case "published":
+
+    case "publish":
       return {
         color: "#006C9C",
-        backgroundColor: "rgba(0 ,184 ,217, 0.16)",
+        backgroundColor: "rgba(0, 184, 217, 0.16)",
       };
+
     default:
-      return {};
+      return {
+        color: "#637381",
+        backgroundColor: "rgba(145, 158, 171, 0.16)",
+      };
   }
 };
 
-export const getStockStatus = (stock: number) => {
-    if (stock === 0) {
-      return {
-        label: "out of stock",
-        color: "#ff56303d",
-        progress: 100,
-      };
-    }
-    if (stock > 0 && stock <= 10) {
-      return {
-        label: `${stock} low stock`,
-        color: "#FFAB00",
-        progress: (stock / 10) * 100,
-      };
-    }
+export const getStockStatus = (stock: number, maxStock: number = 100) => {
+  const safeStock = Number(stock) || 0;
+  const safeMax = Number(maxStock) || 100;
+
+  const progress = (safeStock / safeMax) * 100;
+
+  if (safeStock === 0) {
     return {
-      label: `${stock} in stock`,
-      color: "#22C55E",
+      label: "Out of stock",
+      color: "#ff56303d",
       progress: 100,
     };
+  }
+
+  if (safeStock <= safeMax * 0.2) {
+    return {
+      label: `${safeStock} Low stock`,
+      color: "#f75625",
+       background: "#ff56303d",
+      progress,
+    };
+  }
+
+  if (safeStock <= safeMax * 0.8) {
+    return {
+      label: `${safeStock} Medium stock`,
+      color: "#FFAB00",
+       background: "#ffab003d",
+      progress,
+    };
+  }
+
+  return {
+    label: `${safeStock} In stock`,
+    color: "#22C55E",
+    progress: 100,
   };
+};

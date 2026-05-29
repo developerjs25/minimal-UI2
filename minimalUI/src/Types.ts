@@ -1,13 +1,13 @@
- import {COLORS} from "./constants/colors"
- 
- declare module "@mui/material/styles" {
- export interface Palette {
+import { COLORS } from "./constants/colors"
+
+declare module "@mui/material/styles" {
+  export interface Palette {
     custom: {
       navbarBg: string;
       textSecondary: string;
     };
   }
- export interface PaletteOptions {
+  export interface PaletteOptions {
     custom?: {
       navbarBg?: string;
       textSecondary?: string;
@@ -28,10 +28,9 @@ export interface OptionType {
 }
 // pages/users/image box
 export interface ImageBoxProps {
-  image?: string;
-  status?: string;
+  image: string;
   error?: boolean;
-  onChange?: (image: string) => void;
+  onChange?: (file: File) => void;   // ✅ FIX HERE
 }
 
 export interface UserList {
@@ -41,10 +40,10 @@ export interface UserList {
   firstName?: string;
   lastName?: string;
   email: string;
-  
+
   number: string;
   country: string;
-    countrycode?: string;
+  countrycode?: string;
   role: string;
   city: string;
   address1: string;
@@ -131,6 +130,7 @@ export interface UserInputFieldProps {
   error?: boolean;
   helperText?: string;
   disabled?: boolean;
+  startContant?: React.ReactNode;
   country?: any;
   onCountryChange?: (country: any) => void;
 }
@@ -139,9 +139,9 @@ export interface UserInputFieldProps {
 export type PhoneInputFieldProps = {
   PlaceHolder?: string;
   value: string;
-  onChange?: (data: { phone: string; countryNumber : string }) => void;
-  country?: string;     
-  countryNumber ?: string; 
+  onChange?: (data: { phone: string; countryNumber: string }) => void;
+  country?: string;
+  countryNumber?: string;
   error?: boolean;
   helperText?: string;
 };
@@ -176,7 +176,7 @@ export interface ProductFormProps {
 
 //theme 
 declare module "@mui/material/styles" {
- export interface Palette {
+  export interface Palette {
     neutral: typeof COLORS.neutral;
     black: typeof COLORS.black;
     white: typeof COLORS.white;
@@ -187,7 +187,7 @@ declare module "@mui/material/styles" {
     red: typeof COLORS.red;
     workspace: typeof COLORS.workspace;
   }
-  export  interface PaletteOptions {
+  export interface PaletteOptions {
     neutral?: typeof COLORS.neutral;
     black?: typeof COLORS.black;
     white?: typeof COLORS.white;
@@ -212,7 +212,7 @@ export interface ColorContextType {
 }
 
 declare module "@mui/material/styles" {
-export  interface TypeBackground {
+  export interface TypeBackground {
     default: string;
     paper: string;
     SidebarBorder: string;
@@ -231,18 +231,18 @@ export  interface TypeBackground {
     Inputborder: string;
     Menubg: string;
     userchipcolor: string;
-          
+    addressborder: string;
+
   }
 }
 
 // action button 
-
 export type ActionMenuProps = {
   onView: () => void;
-  onEdit?: () => void;   // ✅ correct
+  onEdit?: () => void;
   onDelete: () => void;
   firstlink?: string;
-  secoundlink?:string;
+  secoundlink?: string;
   thirdlink?: string;
 
 };
@@ -287,7 +287,7 @@ export type Order = {
 
 //myaccount
 
-export interface UserData  {
+export interface UserData {
   image: string;
   firstName: string;
   lastName: string;
@@ -306,8 +306,8 @@ export interface UserData  {
 };
 
 export interface FormErrors {
-    password?: string;
-    confirmPassword?: string;
+  password?: string;
+  confirmPassword?: string;
 }
 
 //create user
@@ -321,6 +321,22 @@ export interface CountryType {
 
 //otp box
 export type OtpProps = {
-    otp: string[];
-    setOtp: (otp: string[]) => void;
+  otp: string[];
+  setOtp: (otp: string[]) => void;
 };
+
+// product card sidebar
+export interface CartItem {
+  _id: string;
+  productId: string;
+  productImage: string;
+  category: string;
+  productName: string;
+  productCode: string;
+  quantity: number;
+  price: number;
+  total?: number;
+  taxes?: number;
+  selectedSizes?: string[];
+  selectedColors?: string[];
+}

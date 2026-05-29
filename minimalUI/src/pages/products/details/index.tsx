@@ -14,12 +14,11 @@ import { ChevronLeft, ChevronRight } from "@mui/icons-material";
 // import { Navigation, Thumbs, FreeMode } from "swiper/modules";
 // import Images from "../../../constants/Images";
 import { ListButton } from "../../../components/button/CustomButton";
-import { useParams ,useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { productRows } from "../../../components/contact/ProductContant";
 import { useTheme } from "@mui/material/styles";
 // const productImages = [Images.product1, Images.product2, Images.product3, Images.product4, Images.product5, Images.product6, Images.product7, Images.product8,];
-
+import axios from "axios";
 
 const sizes = ["7", "8", "9", "10", "11"];
 
@@ -27,22 +26,37 @@ export default function ProductDetailSlider() {
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [selectedSize, setSelectedSize] = React.useState('9');
     // const [activeIndex, setActiveIndex] = useState(1);
-const navigate = useNavigate();
-const theme = useTheme();
-     const { id } = useParams();
+    const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
+    const theme = useTheme();
+    const { id } = useParams();
     const [ProductData, setProductData] = useState<any>({
-        name: "",
-        description: "",
-        contect: "",
+        productName: "",
+        Productdescription: "",
+        regularprice: "",
+        quantity: "",
+        saleprice: "",
     });
 
     useEffect(() => {
-        if (id) {
-            const Product = productRows.find((item: { id: number; }) => item.id === Number(id));
-
-            if (Product) {
-                setProductData(Product);
+        const FetchProduct = async () => {
+            try {
+                setIsLoading(true);
+                const res = await axios.get(`http://localhost:3003/product/${id}`, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                });
+                setProductData(res.data);
+            } catch (error) {
+                console.error("Error fetching product:", error);
+            } finally {
+                setIsLoading(false);
             }
+        };
+
+        if (id) {
+            FetchProduct();
         }
     }, [id]);
     const handleChange = (event: SelectChangeEvent) => {
@@ -66,10 +80,10 @@ const theme = useTheme();
 
 
     return (
-        <Box sx={{ px: 9 , flexDirection: { xs: "column", md: "row" }, gap: { xs: 3, md: 6 } }}>
+        <Box sx={{ px: 9, flexDirection: { xs: "column", md: "row" }, gap: { xs: 3, md: 6 } }}>
             <Box flex={1} sx={{ position: "relative" }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={5} >
-                    <Button onClick={()=> navigate("/app/products/list")} startIcon={<ChevronLeft fontSize="small" />} sx={{ color: theme.palette.background.whiteBlack, fontWeight: 700, fontSize: 14, textTransform: "none", minWidth: "auto", padding: 0, "&:hover": { backgroundColor: "transparent" }, }} >Back</Button>
+                    <Button onClick={() => navigate("/app/products/list")} startIcon={<ChevronLeft fontSize="small" />} sx={{ color: theme.palette.background.whiteBlack, fontWeight: 700, fontSize: 14, textTransform: "none", minWidth: "auto", padding: 0, "&:hover": { backgroundColor: "transparent" }, }} >Back</Button>
                     <Stack direction="row" spacing={1}>
                         <Tooltip title="Open in new tab">
                             <IconButton size="small" sx={{ color: "#637381" }}><OpenInNewIcon fontSize="small" /></IconButton>
@@ -80,10 +94,10 @@ const theme = useTheme();
                         <ListButton contant="Published" />
                     </Stack>
                 </Stack>
-                <Stack direction={{ xs: "column", md: "row" }}  spacing={7} mb={1}>
-             <Box sx={{ width: "100%", maxWidth: { xs: "100%", sm: 500, md: 590 }, maxHeight: { xs: "auto", sm: 500, md: 590 }, mx: "auto",}}>
-                        <Box sx={{ position: "relative", borderRadius: 4, overflow: "hidden", width: "100%", height: "100%" , aspectRatio: "1 / 1",}}>
-                                        <Box component="img" src={ProductData.image} sx={{ width: "100%", height: "100%",  objectFit: "cover", }} />
+                <Stack direction={{ xs: "column", md: "row" }} spacing={7} mb={1}>
+                    <Box sx={{ width: "100%", maxWidth: { xs: "100%", sm: 500, md: 590 }, maxHeight: { xs: "auto", sm: 500, md: 590 }, mx: "auto", }}>
+                        <Box sx={{ position: "relative", borderRadius: 4, overflow: "hidden", width: "100%", height: "100%", aspectRatio: "1 / 1", }}>
+                            <Box component="img" src={`http://localhost:3003/uploads/${ProductData.imageName}`} sx={{ width: "100%", height: "100%", objectFit: "cover", }} />
 
                             {/* <Swiper onSlideChange={(swiper) => setActiveIndex(swiper.realIndex + 1)}
                                 navigation={{ nextEl: ".next-btn", prevEl: ".prev-btn", }} modules={[FreeMode, Navigation, Thumbs]}>
@@ -100,19 +114,26 @@ const theme = useTheme();
                             </Box> */}
                         </Box>
                     </Box>
-                    <Box sx={{flex: 1,width: "100%",mt: { xs: 3, md: 0 },}}>
+                    <Box sx={{ flex: 1, width: "100%", mt: { xs: 3, md: 0 }, }}>
                         <StyledChip label="NEW" bgcolor="rgba(0 ,184 ,217, 0.16)" color="#006C9C" />
-                        <Box sx={{ color: "#22C55E", fontWeight: 700, fontSize: 13, lineHeight: 1, mt: 2, }}>IN STOCK</Box>
-                        <Typography variant="h6" fontWeight={700} mt={1.5}>{ProductData.name}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 15, lineHeight: 1, mt: 2, }}
+                            color={Number(ProductData.quantity) > 0 ? "#22C55E" : "error.main"} mb={2} >
+                            {Number(ProductData.quantity) > 0 ? "IN STOCK " : "OUT OF STOCK"}
+                        </Typography>
+                        <Typography variant="h6" fontWeight={700} mt={1.5}>{ProductData.productName}</Typography>
                         <Stack direction="row" alignItems="center" spacing={0.5} mb={2}>
                             <Typography variant="caption" color="#919EAB" ml={0.7} fontSize={14} display="flex" alignItems="center" py={2}>
                                 <Rating name="half-rating-read" defaultValue={3.7} precision={0.5} readOnly />
                                 (9.12k reviews)
                             </Typography>
                         </Stack>
-                        <Typography variant="h5" fontWeight={700} mb={2}>{ProductData.price}</Typography>
-                        <Typography variant="body2" color="#767E95"  pb={2} sx={{ lineHeight: 1.5,  maxWidth: { xs: "100%", md: 410 }, borderBottom: "1px dashed #919eab33" }}>
-                            Featuring the original ripple design inspired by Japanese bullet trains,the Nike Air Max 97 lets you push your style full-speed ahead.
+                        <Stack direction="row" alignItems="center" spacing={1} mb={2}>
+                            <Typography variant="h6" fontSize={22} fontWeight={700}> ${ProductData.saleprice} </Typography>
+                            {ProductData.regularprice !== ProductData.saleprice && (
+                                <Typography variant="h6" fontSize={15} sx={{ textDecoration: "line-through", color: "#767E95", }} > ${ProductData.regularprice} </Typography>)}
+                        </Stack>
+                        <Typography variant="body2" color="#767E95" pb={2} sx={{ lineHeight: 1.5, maxWidth: { xs: "100%", md: 410 }, borderBottom: "1px dashed #919eab33" }}>
+                            {ProductData.Productdescription}
                         </Typography>
                         <Box display="flex" justifyContent="space-between" alignItems="center" py={2}>
                             <Typography fontWeight={600} mt={2} fontSize={15}>Color</Typography>
@@ -152,7 +173,7 @@ const theme = useTheme();
                                     </Box>
                                 </Box>
                             </Box>
-                            <Typography sx={{ mt: 1, fontSize: 12, color: "#4e6e8e", textAlign: "end" }} > Available: {available}</Typography>
+                            <Typography sx={{ mt: 1, fontSize: 12, color: "#4e6e8e", textAlign: "end" }} > Available: {ProductData.quantity || 0}</Typography>
                         </Box>
 
                         <Stack direction="row" spacing={2} py={3}>

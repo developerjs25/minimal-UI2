@@ -1,17 +1,19 @@
-import Toolbar from "@mui/material/Toolbar";
+import ProductCart from "../../../pages/userproduct/productCard";
 import IconButton from "@mui/material/IconButton";
-// import SearchIcon from "@mui/icons-material/Search";
-import Profile from "../profile";
-import { Box, Typography, Avatar } from "@mui/material";
-import Notification from "../notification";
-import Images from "../../../constants/Images";
-import Settings from "../settings";
+import { Box, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import Images from "../../../constants/Images";
 import { useLocation } from "react-router-dom";
+import Toolbar from "@mui/material/Toolbar";
+import Notification from "../notification";
+import Settings from "../settings";
+import Profile from "../profile";
+import { useState } from "react";
 
 export default function Header({ toggleSidebar, showMenu, open }: any) {
-  const theme = useTheme();
+  const [cartOpen, setCartOpen] = useState(false);
   const location = useLocation();
+  const theme = useTheme();
 
   const pageTitles: Record<string, string> = {
     "/app/user/list": "User List",
@@ -21,7 +23,8 @@ export default function Header({ toggleSidebar, showMenu, open }: any) {
     "/app/products/list": "Product List",
     "/app/order/list": "Order List",
     "/app/notification": "Notification",
-    "/app/myaccount": "My Account"
+    "/app/myaccount": "My Account",
+    "/user/product": "Our Products",
   };
   const getPageTitle = (pathname: string) => {
     if (pathname.startsWith("/app/user/edit")) return "Edit User";
@@ -54,6 +57,9 @@ export default function Header({ toggleSidebar, showMenu, open }: any) {
             <Box component="span" sx={{ fontSize: 12, fontWeight: 600, px: 1, py: 0.25, borderRadius: 1, backgroundColor: "white.main", }} > ⌘K </Box>
           </Box>
         </IconButton> */}
+        <IconButton size="large" color="inherit" sx={{ "&:hover": { backgroundColor: "transparent" } }}>
+           <ProductCart open={cartOpen} setOpen={setCartOpen} />
+        </IconButton>
         <IconButton size="large" color="inherit" sx={{ "&:hover": { backgroundColor: "transparent" } }}>
           <Notification />
         </IconButton>

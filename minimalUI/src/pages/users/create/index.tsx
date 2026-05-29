@@ -1,16 +1,18 @@
 import { Box, Stack, Grid, Typography } from "@mui/material";
 import ImageBox from "../components/ImageBox";
-import { CountryInput, PhoneNumberInput, StateInput, UserInputField, } from "../../../components/input/CustomInput";
+import {CountryInput,PhoneNumberInput,StateInput, UserInputField,} from "../../../components/input/CustomInput";
 import { ListButton } from "../../../components/button/CustomButton";
 import Breadcrumb from "../../../components/breadcrumbs";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
 import Toaster from "../../../components/toaster";
-import { StatusSelecter, RoleSelecter } from "../../../components/select";
+import {Selecter, RoleSelecter,} from "../../../components/select";
 
 const CreateUser = () => {
+
     const navigate = useNavigate();
+
     const [formData, setFormData] = useState({
         image: "",
         firstName: "",
@@ -26,79 +28,104 @@ const CreateUser = () => {
         address1: "",
         address2: "",
         status: "",
-        role: ""
+        role: "",
     });
 
-    const [toast, setToast] = useState({ open: false, message: "", type: "", });
-    const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
+    const [toast, setToast] = useState({open: false,message: "",type: "",});
+    const [errors, setErrors] = useState<{[key: string]: boolean;}>({});
     const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (field: string, value: any) => {
         setFormData((prev) => {
-            const updated = {
-                ...prev,
-                [field]: value,
-            };
-            setErrors((prev) => ({
-                ...prev,
-                [field]: false,
-            }));
-            if (field === "countrycode") {
-                updated.stateName = "";
-                updated.stateCode = "";
-            }
-
+            const updated = {...prev,[field]: value,};
+            setErrors((prev) => ({...prev,[field]: false,}));
+            if (field === "countrycode") {updated.stateName = "";updated.stateCode = "";}
             return updated;
         });
     };
 
     const handleSubmit = async () => {
         const newErrors: { [key: string]: boolean } = {};
-
         Object.keys(formData).forEach((key) => {
-            if (!String(formData[key as keyof typeof formData]).trim()) {
-                newErrors[key] = true;
-            }
+
+            if (!String(formData[key as keyof typeof formData]).trim()) { newErrors[key] = true; }
         });
-        
+
         const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 
-        if (errors.email) {
-            if (!emailRegex.test(formData.email)) {
-                setToast({ open: true, message: "Invalid email format", type: "error", });
-                return;
-            }
+        if (
+            formData.email &&
+            !emailRegex.test(formData.email)
+        ) {
+            setToast({ open: true, message: "Invalid email format", type: "error", });
+            return;
         }
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
+            setToast({ open: true, message: "Please fill all fields", type: "error", });
             return;
         }
-
         try {
             setIsLoading(true);
+            const userPayload = {
+                image: formData.image,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                phone: formData.phone,
+                role: formData.role,
+                status: formData.status,
+            };
 
-            const payload = { ...formData, state: formData.stateCode, };
-
-            const resp = await axios.post("http://localhost:3003/data", payload, {
-                headers: { "Content-Type": "application/json" },
-            }
+            const userResp = await axios.post("http://localhost:3003/data", userPayload,
+                {
+                    headers: { "Content-Type": "application/json", },
+                }
             );
 
-            console.log(resp.data);
+            console.log("USER RESPONSE:", userResp.data);
+
+            const userId = userResp?.data?.user?._id || userResp?.data?._id;
+
+            if (!userId) {
+                throw new Error(
+                    "User ID not found in response"
+                );
+            }
+
+            const addressPayload = {
+                userId,
+                address1: formData.address1,
+                address2: formData.address2,
+                city: formData.city,
+                stateName: formData.stateName,
+                stateCode: formData.stateCode,
+                country: formData.country,
+                countrycode: formData.countrycode,
+                countryNumber: formData.countryNumber,
+            };
+
+
+            const addressResp = await axios.post("http://localhost:3003/address", addressPayload,
+                { headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, "Content-Type": "application/json", }, }
+            );
+            console.log("ADDRESS RESPONSE:", addressResp.data);
+
             setToast({ open: true, message: "User created successfully!", type: "success", });
 
             setTimeout(() => {
                 navigate("/app/user/list");
             }, 1500);
-        } catch (err) {
-            console.error("Error submitting form:", err);
-            setToast({ open: true, message: "Something went wrong", type: "error" });
 
+        } catch (err: any) {
+            console.error("CREATE USER ERROR:", err);
+            setToast({ open: true, message: err?.response?.data?.message || "Something went wrong", type: "error", });
         } finally {
             setIsLoading(false);
         }
     };
+
 
     return (
         <Box sx={{ maxWidth: 1500, mx: "auto", pb: 9, pt: 5 }}>
@@ -149,11 +176,11 @@ const CreateUser = () => {
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <RoleSelecter onChange={(value: string) => handleChange("role", value)} error={errors.role} />
+                               <RoleSelecter value={formData.role} onChange={(value: string) => handleChange("role", value)} error={errors.role} label="Role" FirstItem="Admin" SecondItem="User" />
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <StatusSelecter onChange={(value: string) => handleChange("status", value)} error={errors.status} />
+                            <Selecter value={formData.status} onChange={(value: string) => handleChange("status", value)} error={errors.status} label="Status" FirstItem="Active" SecondItem="InActive" ThridItem="Banned"/>
                         </Grid>
                     </Grid>
 
